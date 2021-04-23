@@ -1,0 +1,45 @@
+
+= PowerBuilder ORCA Interface
+Simon Reichenbach <simon.reichenbach@informaticon.com>
+
+== Abstract
+This is a set of python scripts, with which you can export and import source from/into PowerBuilder.
+
+== Installation
+
+.Requirements
+* A Python 3 Interpreter (x86)
+* Some Python dependencies (nothing special, see imports in the python scripts)
+* A PowerBuilder installation (ORCA dll and its dependencies)
+
+== Usage
+
+=== Manual Import/Export (context menu)
+
+.Export Source from PBL to folder
+[source,sh]
+----
+python.exe main.py --libexport "C:\a3\gs_exf\lib\inf1.pbl"
+#files are exported to the subfolder .\export_<libraryName>
+----
+
+.Export Source from folder into PBL
+[source,sh]
+----
+python.exe main.py --libimport "C:\a3\gs_exf\lib\inf1.pbl"
+#files are imported from the subfolder .\export_<libraryName>
+----
+
+=== Automation / Integration
+
+.Export Source from PBL to folder
+[source,batch]
+----
+python.exe main.py C:\a3\gs_exf\lib\a3.pbt --libexport inf1.pbl C:\ax\test
+----
+
+.Export Source from folder into PBL
+[source,batch]
+----
+python.exe C:\ax\powerbuilder.orcainterface\main.py C:\a3\gs_exf\lib\a3.pbt --libimport inf3.pbl C:\ax\test
+----

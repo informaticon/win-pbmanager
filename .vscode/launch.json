@@ -35,6 +35,14 @@
 			"args": ["--deltaexport", "C:\\a3\\bloechlinger"],
 			"console": "internalConsole",
 			"pythonPath": "C:\\Program Files (x86)\\Python39-32\\python.exe"
+		},{
+			"name": "Fullexport",
+			"type": "python",
+			"request": "launch",
+			"program": "main.py",
+			"args": ["--fullexport", "C:\\a3\\bloechlinger"],
+			"console": "internalConsole",
+			"pythonPath": "C:\\Program Files (x86)\\Python39-32\\python.exe"
 		}
 	]
 }

@@ -38,7 +38,16 @@ class Pbt:
 
 	def get_folder(self):
 		return self.own_path.parent
+	
+	def get_own_path(self):
+		return self.own_path
+		
+	def get_app_name(self):
+		return self.app_name
 
+	def get_app_pbl_path(self):
+		return self.app_lib
+	
 	@classmethod
 	def parse(cls, pbt_path : Path):
 		pbt = Pbt(pbt_path)
@@ -50,7 +59,7 @@ class Pbt:
 				
 				m = _re_app_lib.match(line)
 				if m:
-					pbt.app_lib = m.group(1)
+					pbt.app_lib = pbt_path.parent.joinpath(m.group(1))
 			
 				m = _re_lib_list.match(line)
 				if m:

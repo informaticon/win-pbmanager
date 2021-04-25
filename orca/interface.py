@@ -12,7 +12,7 @@ class SessionConfig(c.Structure):
 	_fields_ = [
 		('eClobber', c.c_uint), #1=PBORCA_CLOBBER
 		('eExportEncoding', c.c_uint), #0=UTF16LE, 1=UTF8
-		('bExportHeader', win.BOOL),
+		('bexport_header', win.BOOL),
 		('bExportIncludeBinary', win.BOOL),
 		('bExportCreateFile', win.BOOL),
 		('pExportDirectory', win.LPWSTR),
@@ -23,7 +23,7 @@ class SessionConfig(c.Structure):
 	def __init__(self):
 		self.eClobber = 1
 		self.eExportEncoding = e.PBEncoding.UNICODE.value
-		self.bExportHeader = True
+		self.bexport_header = True
 		self.bExportIncludeBinary = True
 		self.bExportCreateFile = False
 		self.pExportDirectory = (win.LPWSTR)("")
@@ -33,218 +33,164 @@ class SessionConfig(c.Structure):
 class Orca:
 	pSessionOpen = c.WINFUNCTYPE(c.c_void_p)
 	pSessionClose = c.WINFUNCTYPE(c.c_void_p, c.c_void_p)
-	aSessionClose = (e.PBArg.INPUT.value, "hSession"),
-	def __init__(self, workDir : Path, dllPath : Path = Path("C:\\Program Files (x86)\\Appeon\\Shared\\PowerBuilder\\PBORC170.DLL")):
-		self.dll = c.WinDLL(os.fspath(dllPath))
-		#self.dll.set_callback(orcaCallback)
-		#print(c.c_int.in_dll(self.dll, "PBORCA_P_CODE"))
+	aSessionClose = (e.PBArg.INPUT.value, "session_handle"),
+	def __init__(self, dll_path : Path = Path("C:\\Program Files (x86)\\Appeon\\Shared\\PowerBuilder\\PBORC170.DLL")):
+		self.dll = c.WinDLL(os.fspath(dll_path))
 		
-		self.workDir = workDir
-
 		self.fSessionOpen = Orca.pSessionOpen(("PBORCA_SessionOpen", self.dll))
 		self.fSessionClose = Orca.pSessionClose(("PBORCA_SessionClose", self.dll), self.aSessionClose)
-		#self.fLibraryCreate = self.pLibraryCreate(("PBORCA_LibraryCreate", self.dll), self.aLibraryCreate)
-
-		self.hSession = self.fSessionOpen()
+		
+		self.session_handle = self.fSessionOpen()
 		self.config  = SessionConfig()
 		self.configure()
 		
 	def __del__(self):
-		self.fSessionClose(c.c_void_p(self.hSession))
+		self.fSessionClose(c.c_void_p(self.session_handle))
 	
-	def configure(self, encoding : e.PBEncoding = None, exportHeader : bool = None,
-					exportBinData : bool = None, exportFolder : str = None):
+	def configure(self, encoding : e.PBEncoding = None, export_header : bool = None,
+					export_binary_data : bool = None, export_folder : str = None):
 		
 		if self.config == None:
 			self.config = SessionConfig()
 
 		if encoding != None:
-			self.config.eExportEncoding = c.c_uint(encoding.value)
-			self.config.eImportEncoding = c.c_uint(encoding.value)
-		if exportHeader != None:
-			self.config.bExportHeader = c.c_bool(exportHeader)
-		if exportBinData != None:
-			self.config.bExportIncludeBinary = c.c_bool(exportBinData)
-		if exportFolder != None:
-			self.config.bExportCreateFile = c.c_bool(True)
-			self.config.pExportDirectory = (win.LPWSTR)(exportFolder)
+			self.config.eExportEncoding = encoding.value
+			self.config.eImportEncoding = encoding.value
+		if export_header != None:
+			self.config.bexport_header = export_header
+		if export_binary_data != None:
+			self.config.bExportIncludeBinary = export_binary_data
+		if export_folder != None:
+			self.config.bExportCreateFile = True
+			self.config.pExportDirectory = export_folder
 		return e.PBResult(self.dll.PBORCA_ConfigureSession(
-			self.hSession,
+			self.session_handle,
 			c.byref(self.config)
 		))
 
-	def readSource(self, sFileFullPath):
-		with open(sFileFullPath, 'rb') as f:
+	def read_source(self, source_path : Path):
+		with open(source_path, 'r', encoding='utf-8-sig') as f:
 			return f.read()
 
-	def libraryCreate(self, sLibraryName, sLibraryComment):
-		sLibraryFullPath = self.workDir.joinpath(sLibraryName)
-		'''
-		p1 = c.c_void_p(self.hSession)
-		p2 = win.LPSTR(sLibraryFullPath.encode(self.encoding))
-		p3 = win.LPSTR(sLibraryComment.encode(self.encoding))
-		return self.fLibraryCreate(p1, p2, p3)
-		'''
+	def pbl_create(self, pbl_path : Path, pbl_comment : str):
 		return e.PBResult(
-			self.dll.PBORCA_LibraryCreate(self.hSession, os.fspath(sLibraryFullPath), sLibraryComment)
+			self.dll.PBORCA_LibraryCreate(self.session_handle, os.fspath(pbl_path), pbl_comment)
 		)
 
-	def setLibraryList(self, sLibList):
-		sLibList = sLibList[::-1] 
-		sLibList = list(map(lambda o : os.fspath(self.workDir.joinpath(o)), sLibList))
-		sLibArr = (win.LPWSTR * len(sLibList))(*sLibList)
+	def set_pbl_list(self, pbl_path_list : list[Path]):
+		#pbl_list = pbl_list[::-1] #TODO: Why ::-1 ?
+		pbl_array = (win.LPWSTR * len(pbl_path_list))(*list(map(lambda o : os.fspath(o), pbl_path_list)))
 		
 		return e.PBResult(
-			self.dll.PBORCA_SessionSetLibraryList(self.hSession, sLibArr, len(sLibList))
+			self.dll.PBORCA_SessionSetLibraryList(self.session_handle, pbl_array, len(pbl_path_list))
 		)
 
-	def setApplication(self, sAppLibName, sAppName)	:
+	def set_current_app(self, app_pbl_path : Path, app_name : str):
 		return e.PBResult(
-			self.dll.PBORCA_SessionSetCurrentAppl(self.hSession, os.fspath(self.workDir.joinpath(sAppLibName)), sAppName)
+			self.dll.PBORCA_SessionSetCurrentAppl(self.session_handle, os.fspath(app_pbl_path), app_name)
 		)
-
-	def sourceImportBatch(self, sourceFiles : Src, errorList = []):
-		self.returnList = errorList
-		sLibraries = []
-		sEntryNames = []
-		pEntryTypes = []
-		sEntryComments = []
-		sEntrySources = []
-		lEntrySourceLengths = []
-		iNumberOfEntries = 0
-		for sourceFile in sourceFiles:
-			sLibraries.append(sourceFile.libraryFullPath)
-			sEntryNames.append(sourceFile.name)
-			pEntryTypes.append(sourceFile.type.value)
-
-			binSource = self.readSource(sourceFile.fullFilePath)
-			sSource = binSource.decode("utf-8")
-			sEntrySources.append(sSource)
-			sEntryComments.append(self._getCommentFromSource(sSource))
-			lEntrySourceLengths.append(len(sSource.encode('utf-16-le')))
-			iNumberOfEntries += 1
-		
-		pLibraryNames = (win.LPWSTR * len(sLibraries))(*sLibraries)
-		pEntryNames = (win.LPWSTR * len(sEntryNames))(*sEntryNames) #Entry Names
-		otEntryTypes = (c.c_long * len(pEntryTypes))(*pEntryTypes)
-		pComments = (win.LPWSTR * len(sEntryComments))(*sEntryComments)
-		pEntrySyntaxBuffers = (win.LPWSTR * len(sEntrySources))(*sEntrySources)
-		pEntrySyntaxBuffSizes = (c.c_long * len(lEntrySourceLengths))(*lEntrySourceLengths)
-		
+	def import_sources(self, source_files : list[Src], error_list : list[str] = []):
+		self.return_list = error_list
+		pbl_pathstrings = []
+		entry_names = []
+		entry_types = []
+		entry_comments = []
+		entry_sources = []
+		entry_source_lengths = []
+		number_of_entries = 0
+		for source_file in source_files:
+			pbl_pathstrings.append(os.fspath(source_file.pbl_path))
+			entry_names.append(source_file.name)
+			entry_types.append(source_file.src_type.value)
+			entry_source = self.read_source(source_file.own_path)
+			
+			
+			entry_sources.append((win.LPWSTR)(entry_source))
+			entry_source_lengths.append(len(entry_source)*2)
+			entry_comments.append(self._get_comment_from_source(entry_source))
+			number_of_entries += 1
+		#TODO: Import also binary part
 		return e.PBResult(self.dll.PBORCA_CompileEntryImportList(
-			self.hSession,
-			pLibraryNames,
-			pEntryNames,
-			otEntryTypes,
-			pComments,
-			pEntrySyntaxBuffers,
-			pEntrySyntaxBuffSizes,
-			iNumberOfEntries,
-			fOrcaCompErr(self.cbkCompErr),
+			self.session_handle,
+			(win.LPWSTR * number_of_entries)(*pbl_pathstrings), #pLibraryNames
+			(win.LPWSTR * number_of_entries)(*entry_names), #pEntryNames
+			(c.c_long * number_of_entries)(*entry_types), #otEntryTypes
+			(win.LPWSTR * number_of_entries)(*entry_comments), #pComments
+			(win.LPWSTR * number_of_entries)(*entry_sources), #pEntrySyntaxBuffers,
+			(c.c_long * number_of_entries)(*entry_source_lengths), #pEntrySyntaxBuffSizes,
+			number_of_entries,
+			fOrcaCompErr(self._callback_compilation_error),
 			0
 		))
 				
 	@classmethod
-	def _getCommentFromSource(cls, sSource):
+	def _get_comment_from_source(cls, sSource):
 		return re.search(r'(?<=(\r\n\$PBExportComments\$)).*?(?=(\r\n))|$', sSource[:500]).group(0)
 
-	def sourceImport(self, pbl_path : Path, sSourceFile, errorList = []):
-		self.returnList = errorList
-		lpszLibraryName = (win.LPWSTR)(os.fspath(pbl_path))
-		lpszEntryName = (win.LPWSTR)(ntpath.basename(sSourceFile)[:-4])
-		otEntryType = (c.c_long)(e.PBSrcType.getType(sSourceFile).value)
-		
-		binSource = self.readSource(sSourceFile)
-		lEntrySyntaxBuffSize = (c.c_long)(len(binSource))
-		sSource = binSource.decode('utf-8-sig')
-
-		lpszComments = (win.LPWSTR)(self._getCommentFromSource(sSource))
-		lpszEntrySyntax = (win.LPWSTR)(sSource)
+	def import_source(self, pbl_path : Path, source_path : Path, error_list : list[str] = []):
+		self.return_list = error_list
+		entry_source = self.read_source(source_path).decode('utf-8-sig')
 		
 		return e.PBResult(self.dll.PBORCA_CompileEntryImport(
-			self.hSession,
-			lpszLibraryName,
-			lpszEntryName,
-			otEntryType,
-			lpszComments,
-			lpszEntrySyntax,
-			lEntrySyntaxBuffSize,
-			fOrcaCompErr(self.cbkCompErr),
+			self.session_handle,
+			(win.LPWSTR)(os.fspath(pbl_path)), #lpszLibraryName
+			(win.LPWSTR)(source_path.stem), #lpszEntryName
+			(c.c_long)(e.PBSrcType.get_type(source_path).value), #otEntryType
+			(win.LPWSTR)(self._get_comment_from_source(entry_source)), #lpszComments
+			(win.LPWSTR)(entry_source), #entry_source, #lpszEntrySyntax
+			(c.c_long)(len(entry_source.encode('utf-16-le'))), #lEntrySyntaxBuffSize
+			fOrcaCompErr(self._callback_compilation_error),
 			0
 		))	
 	
-	def source_list(self, pbl_path : Path, srcList):
-		self.returnList = srcList
-
+	def get_source_list(self, pbl_path : Path) -> (e.PBResult, list[list[str]]):
+		self.return_list = []
 		lpszLibName = (win.LPWSTR)(os.fspath(pbl_path))
 		lpszLibComments = (win.LPWSTR)("".ljust(e.PBORCA_MSGBUFFER + 1))
 		iCmntsBuffLen = (c.c_int)(e.PBORCA_MSGBUFFER + 1)
-		return e.PBResult(self.dll.PBORCA_LibraryDirectory(
-			self.hSession,
+		ret = e.PBResult(self.dll.PBORCA_LibraryDirectory(
+			self.session_handle,
 			lpszLibName,
 			lpszLibComments,
 			iCmntsBuffLen,
-			fOrcaDirEntry(self.cbkDirEntry),
+			fOrcaDirEntry(self._callback_dir_entry),
 			0
 		))
+		return (ret, self.return_list)
 
-	def sourceExport(self, pbl_path : Path, sEntry, src : Src, eEntryType : e.PBSrcType, lEntrySize):
-		'''
-		sExportDir = self.workDir + "export\\" + sLib[:4]
-		print("sourceExport.setConf", self.configure(exportFolder=sExportDir))
-		Path(sExportDir).mkdir(parents = True, exist_ok = True)
-		lpszLibraryName = (win.LPWSTR)(os.fspath(self.workDir.joinpath(sLib)))
-		lpszEntryName = (win.LPWSTR)(sEntry)
-		lpszExportBuffer = (win.LPWSTR)("".ljust(lEntrySize))
-		plBufSize = (c.c_int)(lEntrySize)
-		plReturnSize = (c.c_int)(0)
-		ret = e.PBResult(self.dll.PBORCA_LibraryEntryExportEx(
-			self.hSession,
-			lpszLibraryName,
-			lpszEntryName,
-			eEntryType.value,
-			lpszExportBuffer,
-			plBufSize,
-			c.byref(plReturnSize)
-		))
-		'''
-		lpszLibraryName = (win.LPWSTR)(os.fspath(pbl_path))
-		lpszEntryName = (win.LPWSTR)(sEntry)
-		lpszExportBuffer = (win.LPWSTR)("".ljust(lEntrySize)) #todo: buffer size is often too small
+	def export_source(self, pbl_path : Path, entry_name : str, entry_type : e.PBSrcType, entry_size) -> (e.PBResult, Src):
+		src_source = (win.LPWSTR)("".ljust(entry_size)) #lpszExportBuffer
 		ret = e.PBResult(self.dll.PBORCA_LibraryEntryExport(
-			self.hSession,
-			lpszLibraryName,
-			lpszEntryName,
-			eEntryType.value,
-			lpszExportBuffer,
-			lEntrySize
+			self.session_handle,
+			(win.LPWSTR)(os.fspath(pbl_path)), #lpszLibraryName 
+			(win.LPWSTR)(entry_name), #lpszEntryName
+			entry_type.value,
+			src_source,
+			entry_size
 		))
-		src.source = lpszExportBuffer.value.rstrip()
-		src.name = sEntry
-		src.type = eEntryType
-		src.library = pbl_path.name
 		
-		return ret
+		return (ret, Src(source = src_source.value.rstrip(), src_type = entry_type, name = entry_name, pbl_path = pbl_path))
 	
-	def entryInfo(self, pbl_path : Path, sEntry, eEntryType : e.PBSrcType, infoList : list):
+	def get_entry_info(self, pbl_path : Path, entry, entry_type : e.PBSrcType) -> (e.PBResult, list[str]):
 		pEntryInformationBlock = PBORCA_EntryInfo()
 		ret = e.PBResult(self.dll.PBORCA_LibraryEntryInformation(
-			self.hSession,
+			self.session_handle,
 			(win.LPWSTR)(os.fspath(pbl_path)),
-			(win.LPWSTR)(sEntry),
-			eEntryType.value,
+			(win.LPWSTR)(entry),
+			entry_type.value,
 			c.byref(pEntryInformationBlock)
 		))
-		infoList.append(pEntryInformationBlock.szComments)
-		infoList.append(pEntryInformationBlock.lCreateTime)
-		infoList.append(pEntryInformationBlock.lObjectSize)
-		infoList.append(pEntryInformationBlock.lSourceSize)
-		return ret
+		return (ret, [
+			pEntryInformationBlock.szComments,
+			pEntryInformationBlock.lCreateTime,
+			pEntryInformationBlock.lObjectSize,
+			pEntryInformationBlock.lSourceSize,
+		])
 
 	# Callback function for compilation errors while source imports
-	def cbkCompErr(self, a, b):
+	def _callback_compilation_error(self, a, b):
 		#print("orcaCompErr", a.contents.errorLevel, a.contents.msgNr, a.contents.msgText) 
-		self.returnList.append([
+		self.return_list.append([
 			a.contents.errorLevel,
 			a.contents.msgNr,
 			a.contents.msgText,
@@ -253,12 +199,11 @@ class Orca:
 		])
 	
 	# Callback function for source list result
-	def cbkDirEntry(self, a, b):
-		#print("orcaDirEntry", a.contents.lpszEntryName)
-		self.returnList.append([
+	def _callback_dir_entry(self, a, b):
+		self.return_list.append([
 			a.contents.lpszEntryName, 
 			e.PBSrcType(a.contents.otEntryType),
-			a.contents.lEntrySize,
+			a.contents.entry_size,
 			datetime.datetime.fromtimestamp(a.contents.lCreateTime).strftime('%Y-%m-%d %H:%M:%S'),
 			a.contents.szComments
 		])
@@ -279,7 +224,7 @@ class PBORCA_DIRENTRY(c.Structure):
 	_fields_ = [
 		('szComments', (win.WCHAR * (e.PBORCA_MAXCOMMENT + 1))),
 		('lCreateTime', c.c_long),
-		('lEntrySize', c.c_long),
+		('entry_size', c.c_long),
 		('lpszEntryName', win.LPWSTR),
 		('otEntryType', c.c_int)
 	]

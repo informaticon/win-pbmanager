@@ -30,7 +30,7 @@ class PBSrcType(Enum):
 	BINARY      = 11
 	
 	@classmethod
-	def getType(cls, sSourceFile):
+	def get_type(cls, source_file : Path):
 		switcher = {
 			'.sra' : cls.APPLICATION,
 			'.srd' : cls.DATAWINDOW,
@@ -45,9 +45,9 @@ class PBSrcType(Enum):
 			'.srpxo' : cls.PROXYOBJECT, # Deprecated, correct file ending unknown
 			'.srbin' : cls.BINARY # Deprecated, correct file ending unknown
 		}
-		return switcher.get(Path(sSourceFile).suffix, cls.UNKNOWN)
+		return switcher.get(source_file.suffix, cls.UNKNOWN)
 
-	def getFileEnding(self):
+	def get_file_ending(self):
 		switcher = {
 			PBSrcType.APPLICATION : '.sra',
 			PBSrcType.DATAWINDOW : '.srd',
@@ -99,11 +99,11 @@ class PBResult(Enum):
 	PBORCA_GETCONNECT_REQSCC = -31
 	PBORCA_PBCFILE_REQSCC = -32
 
-	def asString(self):
-		return PBResult.toString(self.value)
+	def as_string(self):
+		return PBResult.to_string(self.value)
 
 	@classmethod
-	def toString(cls, value):
+	def to_string(cls, value):
 		switcher = {
 			cls.PBORCA_OK : 'Operation successful',
 			cls.PBORCA_INVALIDPARMS : 'Invalid parameter list',

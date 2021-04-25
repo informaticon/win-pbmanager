@@ -10,7 +10,7 @@ if sys.argv[1] == '--fullexport' or sys.argv[1] == '--deltaexport':
 	targets = pbhelper.find_targets(work_dir)
 
 	for target in targets:
-		orca_session = orca.open_session(target.own_path)
+		orca_session = orca.open_session()
 		for pbl_path in target.get_pbl_list():
 			export_folder = pbl_path.own_path.parent.joinpath('src').joinpath(pbl_path.own_path.stem)
 
@@ -35,41 +35,39 @@ if sys.argv[1] == '--fullexport' or sys.argv[1] == '--deltaexport':
 
 	print('export finished')
 
-elif sys.argv[1] == "--libimport" or sys.argv[2] == "--libimport":
-	if sys.argv[1] == "--libimport":
-		#contextmenu pbl -> Import
-		basePath = os.path.dirname(sys.argv[2])
-		library =  os.path.basename(sys.argv[2])
-		target = os.path.join(basePath, list(Path(basePath).glob('*.pbt'))[0])
-		folder = os.path.join(basePath, "export_" + library[:-4])
+elif sys.argv[1] == "--libimport":
+	#contextmenu pbl -> Import
+	library =  Path(sys.argv[2])
+	if len(sys.argv) > 3:
+		work_dir = Path(sys.argv[3])
 	else:
-		target = sys.argv[1]
-		library = sys.argv[3]
-		folder = sys.argv[4]
+		work_dir = library.parent
+	target = pbhelper.find_targets(work_dir)[0]
+	export_folder = library.parent.joinpath('src').joinpath(library.stem)
 	
-	po = orca.open_session(Path(target))
-	print("setLibraryList", po.setLibraryList(orca.get_library_list(target)))
-	print("setApplication", po.setApplication("inf1.pbl", "a3"))
-	print("create", po.libraryCreate(library, "Created by Import"))
-	print(tabulate(orca.import_pbl(po, library, folder), headers=["State", "File", "ErrorList"]))
-elif sys.argv[1] == "--libexport" or sys.argv[2] == "--libexport":
-	if sys.argv[1] == "--libexport":
-		#contextmenu pbl -> Export
-		basePath = os.path.dirname(sys.argv[2])
-		library =  os.path.basename(sys.argv[2])
-		target = os.path.join(basePath, list(Path(basePath).glob('*.pbt'))[0])
-		folder = os.path.join(basePath, "export_" + library[:-4])
+	po = orca.open_session()
+	
+	print("set_pbl_list", po.set_pbl_list(list(map(lambda t: t.get_path(), target.get_pbl_list()))))
+	print("set_current_app", po.set_current_app(target.get_app_pbl_path(), target.get_app_name()))
+	print("create", po.pbl_create(library, "Created by Import"))
+	ret = orca.import_pbl(po, library, export_folder)
+	print(tabulate(ret, headers=["State", "File", "error_list"]))
+	
+elif sys.argv[1] == "--libexport":
+	#contextmenu pbl -> Export
+	library =  Path(sys.argv[2])
+	if len(sys.argv) > 3:
+		work_dir = Path(sys.argv[3])
 	else:
-		target = sys.argv[1]
-		library = sys.argv[3]
-		folder = sys.argv[4]
-
-	po = orca.open_session(Path(target))
-	print("setLibraryList", po.setLibraryList(orca.get_library_list(target)))
-	print("setApplication", po.setApplication("inf1.pbl", "a3"))
-	print(library)
-	print(folder)
-	print(tabulate(orca.export_pbl(po, library, folder), headers=["File", "Type", "Size", "ModifiedDateTime", "Comment", "ObjectSize", "SourceSize", "ExportResult", "Source"]))
+		work_dir = library.parent
+	target = pbhelper.find_targets(work_dir)[0]
+	export_folder = library.parent.joinpath('src').joinpath(library.stem)
+	
+	po = orca.open_session()
+	
+	print("set_pbl_list", po.set_pbl_list(list(map(lambda t: t.get_path(), target.get_pbl_list()))))
+	print("set_current_app", po.set_current_app(target.get_app_pbl_path(), target.get_app_name()))
+	print(tabulate(orca.export_pbl(po, library, export_folder), headers=["File", "Type", "Size", "ModifiedDateTime", "Comment", "ObjectSize", "SourceSize", "ExportResult", "Source"]))
 
 else:
 	raise NotImplementedError

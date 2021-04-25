@@ -1,16 +1,16 @@
 
 import orca.enums as e
-
+from pathlib import Path
 class Src:
-	def __init__(self):
-		self.source : str = None
-		self.type : e.PBSrcType = None
-		self.name : str =  None
-		self.fullFilePath : str = None
-		self.libraryFullPath : str = None
+	def __init__(self, source = None, src_type : e.PBSrcType = None, name = None, own_path : Path = None, pbl_path : Path = None):
+		self.source = source
+		self.src_type = src_type
+		self.name =  name
+		self.own_path = own_path
+		self.pbl_path = pbl_path
 
-	def getFileName(self):
-		return self.name + self.type.getFileEnding()
+	def get_file_name(self):
+		return self.name + self.src_type.get_file_ending()
 
-	def getSource(self):
+	def get_source(self):
 		return self.source

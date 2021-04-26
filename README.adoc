@@ -3,55 +3,70 @@
 Simon Reichenbach <simon.reichenbach@informaticon.com>
 
 == Abstract
-This is a set of python scripts, with which you can export and import source from/into PowerBuilder.
-In the future this projekt will be enhanced with additional tools related to PowerBuilder source code handling.
+This is a set of Python scripts that you can use to export and import source code from/into PowerBuilder.
+In the future, this project will be expanded to include more tools for handling PowerBuilder source code.
+
+The scripts can be used for other projects as well, but in most cases you will be interested in the command line tool pbinterface.
+In this document, only the command line tool is covered.
 
 == Installation
 
-.Requirements
-* A Python 3 Interpreter (**x86**)
-* Some Python dependencies (nothing special, see imports in the python scripts)
-* A PowerBuilder installation (ORCA dll and its dependencies)
+=== Binaries
+In the future, the binaries will be shared over DUFI or another platform.
+For the moment, you have to build the command line jourself from source.
+
+=== Build from Source
+
+==== Requirements
+* A Python 3 Interpreter (**x86**) with the following packages installed
+** tabulate
+** click
+** pyinstaller
 
 == Usage
+In order to use this tool, you must have a working PowerBuilder installation (this tool uses the PBORCAxxx.dll).
+The examples use the compiled version of this tool, but you can also run it from source (`pbinterface.py`).
 
-=== Manual Import/Export (context menu)
-
-.Export Source from PBL to folder
+.Show Help
 [source,batch]
 ----
-python.exe main.py --libexport "C:\a3\gs_exf\lib\inf1.pbl"
-#files are exported to the subfolder .\export_<libraryName>
+pbinterface.exe --help
 ----
 
-.Export Source from folder into PBL
+=== Manual Import/Export from single PBL files
+
+.Export source from PBL to folder
 [source,batch]
 ----
-python.exe main.py --libimport "C:\a3\gs_exf\lib\inf1.pbl"
-#files are imported from the subfolder .\export_<libraryName>
+:: files are exported to the subfolder .\src\<libraryName>\
+pbinterface.exe export pbl "C:\a3\grundschicht\lib\inf1.pbl"
+----
+
+.Import source from folder into PBL
+[source,batch]
+----
+:: files are imported from the subfolder .\src\<libraryName>\
+pbinterface.exe import pbl "C:\a3\grundschicht\lib\inf1.pbl"
 ----
 
 === Automation / Integration
 
-.Export Source from PBL to folder
+.Export source from a specific PBT (and all its PBL) to folder
 [source,batch]
 ----
-python.exe main.py --libexport inf1.pbl C:\ax\test
+:: Export all objects
+pbinterface.exe export pbt --type full "C:\a3\grundschicht\lib\a3.pbt"
+
+:: Export only changed objects since last export
+pbinterface.exe export pbt --type delta "C:\a3\grundschicht\lib\a3.pbt"
 ----
 
-.Export Source from PBT (and all its PBL) to folder
+.Export source for all PBT files (and all their PBL) in a working tree to folder
 [source,batch]
 ----
-::Export all objects
-python.exe main.py --fullexport' C:\a3\gs_exf\lib\a3.pbt --libexport inf1.pbl C:\ax\test
+:: Export all objects
+pbinterface.exe export folder --type full C:\a3\grundschicht\
 
-::Export only changed objects
-python.exe main.py --deltaexport' C:\a3\gs_exf\lib\a3.pbt --libexport inf1.pbl C:\ax\test
-----
-
-
-.Import Source from folder into PBL
-[source,batch]
-----
-python.exe main.py C:\a3\gs_exf\lib\a3.pbt --libimport inf3.pbl C:\ax\test
+:: Export only changed objects since last export
+pbinterface.exe export folder --type delta C:\a3\grundschicht\
 ----

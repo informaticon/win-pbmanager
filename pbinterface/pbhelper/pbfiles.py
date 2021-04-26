@@ -21,15 +21,18 @@ class Pbl:
 		
 
 class Pbt:
-	def __init__(self, own_path : Path, pbl_list : list[Pbl] = [], app_name : str = None, app_lib : str = None):
+	def __init__(self, own_path : Path, pbl_list : list[Pbl] = None, app_name : str = None, app_lib : str = None):
 		self.own_path = own_path
-		self.pbl_list = pbl_list
 		self.app_name = app_name
 		self.app_lib = app_lib
-
+		if pbl_list == None:
+			self.pbl_list = []
+		else:
+			self.pbl_list = pbl_list
+			
 	def __str__(self):
 		return 'PBT: {} ({})'.format(self.app_name, self.own_path)
-
+	
 	def add_pbl(self, pbl : Pbl):
 		self.pbl_list.append(pbl)
 	

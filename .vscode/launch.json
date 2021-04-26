@@ -1,7 +1,4 @@
 {
-	// Use IntelliSense to learn about possible attributes.
-	// Hover to view descriptions of existing attributes.
-	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
 	"version": "0.2.0",
 	"configurations": [
 		{
@@ -15,34 +12,37 @@
 			"name": "Import Library",
 			"type": "python",
 			"request": "launch",
-			"program": "main.py",
-			"args": ["--libimport", "C:\\a3\\bgz\\lib\\adr1.pbl"],
-			"console": "internalConsole",
-			"pythonPath": "C:\\Program Files (x86)\\Python39-32\\python.exe"
+			"program": "pbinterface/pbinterface.py",
+			"args": ["import", "pbl", "C:\\a3\\bgz\\lib\\adr1.pbl"],
+			"console": "internalConsole"
 		},{
 			"name": "Export Library",
 			"type": "python",
 			"request": "launch",
-			"program": "main.py",
-			"args": ["--libexport", "C:\\a3\\bgz\\lib\\adr1.pbl"],
-			"console": "internalConsole",
-			"pythonPath": "C:\\Program Files (x86)\\Python39-32\\python.exe"
+			"program": "pbinterface/pbinterface.py",
+			"args": ["export", "pbl", "C:\\a3\\grundschicht\\lib\\exf1.pbl"],
+			"console": "internalConsole"
+		},{
+			"name": "Export Target",
+			"type": "python",
+			"request": "launch",
+			"program": "pbinterface/pbinterface.py",
+			"args": ["export", "pbt", "C:\\a3\\bloechlinger\\lib_rep\\replikation.pbt"],
+			"console": "internalConsole"
 		},{
 			"name": "Pre-Commit",
 			"type": "python",
 			"request": "launch",
-			"program": "main.py",
-			"args": ["--deltaexport", "C:\\a3\\bloechlinger"],
-			"console": "internalConsole",
-			"pythonPath": "C:\\Program Files (x86)\\Python39-32\\python.exe"
+			"program": "pbinterface/pbinterface.py",
+			"args": ["export", "folder", "--type", "delta", "C:\\a3\\bloechlinger"],
+			"console": "internalConsole"
 		},{
 			"name": "Fullexport",
 			"type": "python",
 			"request": "launch",
-			"program": "main.py",
-			"args": ["--fullexport", "C:\\a3\\bloechlinger"],
-			"console": "internalConsole",
-			"pythonPath": "C:\\Program Files (x86)\\Python39-32\\python.exe"
+			"program": "pbinterface/pbinterface.py",
+			"args": ["export", "folder", "--type", "full", "C:\\a3\\grundschicht"],
+			"console": "internalConsole"
 		}
 	]
 }

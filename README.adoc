@@ -70,3 +70,6 @@ pbinterface.exe export folder --type full C:\a3\grundschicht\
 :: Export only changed objects since last export
 pbinterface.exe export folder --type delta C:\a3\grundschicht\
 ----
+
+
+test tani für sr

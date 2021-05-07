@@ -1,0 +1,37 @@
+
+== Requirements
+Beside the requirements stated in the project README, the following components are needed to create a deployable package:
+
+* Inno Setup (iscc)
+
+
+=== Change Version Numbers
+
+.InnoSetup file (pbmanager.iss)
+[source,iss]
+----
+#define MyAppVersion "0.2.0"
+----
+
+.Chocolatey Package (pbmanager.nuspec)
+[source,xml]
+----
+<version>0.2.0</version>
+----
+
+=== Create Install
+
+In VS Code, run the following tasks:
+
+. PyInstaller Build
+. InnoSetup Pack
+. Choco Pack
+
+=== Push to Choco Server
+[source,bash]
+----
+choco push pbmanager.0.2.0.nupkg -source https://choco.informaticon.com/nuget/chocomaticon/ --apikey <KEY>
+
+# You can store your API Key with
+# choco apikey --source "https://choco.informaticon.com/nuget/chocomaticon/" --key "{{api_key}}"
+----

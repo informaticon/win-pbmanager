@@ -1,4 +1,6 @@
 **/__pycache__
-build
-dist
-pbinterface.spec
+/deploy/build
+/deploy/dist
+/deploy/install
+/deploy/Output
+*.nupkg

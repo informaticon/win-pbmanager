@@ -1,0 +1,26 @@
+﻿<!-- Do not remove this test for UTF-8: if “Ω” doesn’t appear as greek uppercase omega letter enclosed in quotation marks, you should use an editor that supports UTF-8, not this one. -->
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>pbmanager</id>
+    <version>0.2.1</version>
+    <title>PB Manager</title>
+    <authors>Simon Reichenbach</authors>
+    <projectUrl>https://github.com/informaticon/dev.win.base.pb-manager</projectUrl>
+    <copyright>2021 informaticon AG</copyright>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <packageSourceUrl>https://github.com/informaticon/dev.win.base.pb-manager</packageSourceUrl>
+    <tags>pb-manager orca interface powerbuilder</tags>
+    <summary>Export and import source code from/into PowerBuilder</summary>
+    <description>See project url: https://github.com/informaticon/dev.win.base.pb-manager</description>
+    <releaseNotes>
+	## 0.2.1
+	* Fixed broken setup
+
+	## 0.2.0
+	* Initial release
+	</releaseNotes>
+  </metadata>
+  <files>
+    <file src="install\**" target="tools" />
+  </files>
+</package>

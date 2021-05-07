@@ -12,35 +12,35 @@
 			"name": "Import Library",
 			"type": "python",
 			"request": "launch",
-			"program": "pbinterface/pbinterface.py",
+			"program": "pbmanager/pbmanager.py",
 			"args": ["import", "pbl", "C:\\a3\\bgz\\lib\\adr1.pbl"],
 			"console": "internalConsole"
 		},{
 			"name": "Export Library",
 			"type": "python",
 			"request": "launch",
-			"program": "pbinterface/pbinterface.py",
+			"program": "pbmanager/pbmanager.py",
 			"args": ["export", "pbl", "C:\\a3\\grundschicht\\lib\\exf1.pbl"],
 			"console": "internalConsole"
 		},{
 			"name": "Export Target",
 			"type": "python",
 			"request": "launch",
-			"program": "pbinterface/pbinterface.py",
+			"program": "pbmanager/pbmanager.py",
 			"args": ["export", "pbt", "C:\\a3\\bloechlinger\\lib_rep\\replikation.pbt"],
 			"console": "internalConsole"
 		},{
 			"name": "Pre-Commit",
 			"type": "python",
 			"request": "launch",
-			"program": "pbinterface/pbinterface.py",
+			"program": "pbmanager/pbmanager.py",
 			"args": ["export", "folder", "--type", "delta", "C:\\a3\\bloechlinger"],
 			"console": "internalConsole"
 		},{
 			"name": "Fullexport",
 			"type": "python",
 			"request": "launch",
-			"program": "pbinterface/pbinterface.py",
+			"program": "pbmanager/pbmanager.py",
 			"args": ["export", "folder", "--type", "full", "C:\\a3\\grundschicht"],
 			"console": "internalConsole"
 		}

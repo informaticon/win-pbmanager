@@ -13,12 +13,12 @@ import click
 	type = click.Path(file_okay=False, dir_okay=True)
 )
 @click.pass_context
-def pbinterface(ctx={}, source_folder = 'src/'):
+def pbmanager(ctx={}, source_folder = 'src/'):
 	ctx.ensure_object(dict)
 	ctx.obj['source_folder'] = source_folder
 
 
-@pbinterface.group(name="import")
+@pbmanager.group(name="import")
 @click.pass_context
 def import_(ctx):
 	"""Import source into PowerBuilder.
@@ -50,7 +50,7 @@ def import_pbl(ctx, filepath=None):
 	print(tabulate(ret, headers=["State", "File", "error_list"]))
 
 
-@pbinterface.group()
+@pbmanager.group()
 @click.pass_context
 def export(ctx):
 	"""Export source from PowerBuilder.
@@ -163,4 +163,4 @@ def do_export(orca_session, pbl_filepath : Path, export_folder : Path, export_ty
 	return orca.export_pbl(orca_session, pbl_filepath, export_folder)
 
 if __name__ == '__main__':
-	pbinterface()
+	pbmanager()

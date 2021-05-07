@@ -1,19 +1,18 @@
 
-= PowerBuilder Interface
+= PowerBuilder Manager
 Simon Reichenbach <simon.reichenbach@informaticon.com>
 
 == Abstract
 This is a set of Python scripts that you can use to export and import source code from/into PowerBuilder.
 In the future, this project will be expanded to include more tools for handling PowerBuilder source code.
 
-The scripts can be used for other projects as well, but in most cases you will be interested in the command line tool pbinterface.
+The scripts can be used for other projects as well, but in most cases you will be interested in the command line tool pbmanager.
 In this document, only the command line tool is covered.
 
 == Installation
 
 === Binaries
-In the future, the binaries will be shared over DUFI or another platform.
-For the moment, you have to build the command line jourself from source.
+This package is 
 
 === Build from Source
 
@@ -25,12 +24,12 @@ For the moment, you have to build the command line jourself from source.
 
 == Usage
 In order to use this tool, you must have a working PowerBuilder installation (this tool uses the PBORCAxxx.dll).
-The examples use the compiled version of this tool, but you can also run it from source (`pbinterface.py`).
+The examples use the compiled version of this tool, but you can also run it from source (`pbmanager.py`).
 
 .Show Help
 [source,batch]
 ----
-pbinterface.exe --help
+pbmanager.exe --help
 ----
 
 === Manual Import/Export from single PBL files
@@ -39,14 +38,14 @@ pbinterface.exe --help
 [source,batch]
 ----
 :: files are exported to the subfolder .\src\<libraryName>\
-pbinterface.exe export pbl "C:\a3\grundschicht\lib\inf1.pbl"
+pbmanager.exe export pbl "C:\a3\grundschicht\lib\inf1.pbl"
 ----
 
 .Import source from folder into PBL
 [source,batch]
 ----
 :: files are imported from the subfolder .\src\<libraryName>\
-pbinterface.exe import pbl "C:\a3\grundschicht\lib\inf1.pbl"
+pbmanager.exe import pbl "C:\a3\grundschicht\lib\inf1.pbl"
 ----
 
 === Automation / Integration
@@ -55,21 +54,18 @@ pbinterface.exe import pbl "C:\a3\grundschicht\lib\inf1.pbl"
 [source,batch]
 ----
 :: Export all objects
-pbinterface.exe export pbt --type full "C:\a3\grundschicht\lib\a3.pbt"
+pbmanager.exe export pbt --type full "C:\a3\grundschicht\lib\a3.pbt"
 
 :: Export only changed objects since last export
-pbinterface.exe export pbt --type delta "C:\a3\grundschicht\lib\a3.pbt"
+pbmanager.exe export pbt --type delta "C:\a3\grundschicht\lib\a3.pbt"
 ----
 
 .Export source for all PBT files (and all their PBL) in a working tree to folder
 [source,batch]
 ----
 :: Export all objects
-pbinterface.exe export folder --type full C:\a3\grundschicht\
+pbmanager.exe export folder --type full C:\a3\grundschicht\
 
 :: Export only changed objects since last export
-pbinterface.exe export folder --type delta C:\a3\grundschicht\
+pbmanager.exe export folder --type delta C:\a3\grundschicht\
 ----
-
-
-test tani für sr

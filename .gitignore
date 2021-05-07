@@ -1,6 +1,6 @@
 **/__pycache__
 /deploy/build
 /deploy/dist
-/deploy/install
 /deploy/Output
+*.exe
 *.nupkg

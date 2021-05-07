@@ -3,7 +3,7 @@
 Beside the requirements stated in the project README, the following components are needed to create a deployable package:
 
 * Inno Setup (iscc)
-
+* Informaticon Code Signing Certificate
 
 === Change Version Numbers
 
@@ -17,6 +17,7 @@ Beside the requirements stated in the project README, the following components a
 [source,xml]
 ----
 <version>0.2.0</version>
+<releaseNotes>...</releaseNotes>
 ----
 
 === Create Install

@@ -2,11 +2,11 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 #include "environment.iss"
 #define MyAppName "PB Manager"
-#define MyAppVersion "0.2.1"
+#define MyAppVersion "0.2.2"
 #define MyAppPublisher "Informaticon"
 #define MyAppURL "https://www.informaticon.com/"
 #define MyAppExeName "pbmanager.exe"
-#define MyAppInstallerName "PBManager"
+#define MyAppInstallerName "Setup_PBManager"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.

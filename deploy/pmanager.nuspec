@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>pbmanager</id>
-    <version>0.2.1</version>
+    <version>0.2.2</version>
     <title>PB Manager</title>
     <authors>Simon Reichenbach</authors>
     <projectUrl>https://github.com/informaticon/dev.win.base.pb-manager</projectUrl>
@@ -13,6 +13,10 @@
     <summary>Export and import source code from/into PowerBuilder</summary>
     <description>See project url: https://github.com/informaticon/dev.win.base.pb-manager</description>
     <releaseNotes>
+	## 0.2.2
+	* Improved uninstall script
+	* Renamed the setup exe file
+
 	## 0.2.1
 	* Fixed broken setup
 

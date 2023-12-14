@@ -71,7 +71,6 @@ jobs:
           $ns.AddNamespace('nuspec', 'http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd')
           $xml.SelectSingleNode('/nuspec:package/nuspec:metadata/nuspec:version', $ns).InnerText = "${{ steps.tag_version.outputs.new_version }}"
           $xml.Save("./choco/pbmanager.nuspec")
-          
 
       # only run it if new tag was created
       - name: create choco package

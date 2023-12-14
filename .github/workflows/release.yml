@@ -69,7 +69,7 @@ jobs:
           [xml]$xml = Get-Content -path ./choco/pbmanager.nuspec -Raw
           $ns = [System.Xml.XmlNamespaceManager]::new($xml.NameTable)
           $ns.AddNamespace('nuspec', 'http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd')
-          $xml.SelectSingleNode('/nuspec:package/nuspec:metadata/nuspec:version', $ns).InnerText = "$env:NEW_VERSION"
+          $xml.SelectSingleNode('/nuspec:package/nuspec:metadata/nuspec:version', $ns).InnerText = "${{ steps.tag_version.outputs.new_version }}"
           $xml.Save("./choco/pbmanager.nuspec")
           
 

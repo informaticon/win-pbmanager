@@ -58,7 +58,7 @@ jobs:
           CSB_AUTH_CCSCOPES: svc.web.code-signing:access
           CSB_AUTH_CLIENTID: ${{ secrets.CODESIGNING_CLIENT_ID }}
           CSB_AUTH_CLIENTSECRET: ${{ secrets.CODESIGNING_CLIENT_SECRET }}
-        run: csb-cli ${{ env.WIN_EXE }} --silent
+        run: csb-cli ./choco/tools/pbmanager.exe --silent
         shell: powershell
         # USE powershell (desktop) and not default pwsh (core) to access csb.exe in PATH
         # use csb-cli to avoid successful action run despite failure of code signing

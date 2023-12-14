@@ -1,0 +1,101 @@
+name: GitHub and Choco release
+on:
+  push:
+    branches:
+      # make sure those branches match with step 'Increase version and push tag' to avoid releasing a package without
+      # former tag creation (pre_release_branches: prerelease, release_branches: main)
+      - main
+      - prerelease
+
+jobs:
+  createrelease:
+    runs-on: self-hosted
+    env:
+      GOPRIVATE: github.com/informaticon/*
+      GH_ACCESS_TOKEN: ${{ secrets.GH_PRIVATE_READ_PAT }}
+
+    steps:
+      # Depth = 0 needed to determine version
+      - name: Check out repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: './go.mod'
+    
+      - name: Git Creds
+        run: git config --global url.https://`${{ secrets.GH_PRIVATE_READ_PAT }}@github.com/.insteadOf https://github.com/
+        # ATTENTION: The config will persist, so after each workflow run the .gitconfig is removed by a 
+        # powershell script under the environment variable ACTIONS_RUNNER_HOOK_JOB_COMPLETED.   
+        # Make sure this is created at runner setup: https://slab.informaticon.com/posts/wip-add-own-git-hub-actions-runner-p3a0bxi3.
+        
+      # goes through commits and increases major if a commit msg body contains `BREAKING CHANGE:`,
+      # increases minor if `feat:` found or increases patch on `fix:`
+      # if none of them occur, the default can be set with default_bump (major, minor, patch, false)
+      # set manually a version with "custom_tag" (https://github.com/mathieudutour/github-tag-action)
+      - name: Increase version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.1
+        with:
+          github_token: ${{ github.token }} # need write permissions to tag repo
+          default_bump: false
+          default_prerelease_bump: prerelease
+          pre_release_branches: prerelease
+          append_to_pre_release_tag: testrelease
+
+      - name: build executables
+        run: |
+          $Env:GOOS = "windows"; $Env:GOARCH = "amd64"; go build -o ./choco/tools/pbmanager.exe
+          
+
+      # windows executable using CC and https://codesigning.informaticon.com/
+      - name: sign
+        env:
+          CSB_AUTH_AUTHORIZATIONCODEFLOW: false
+          CSB_AUTH_CCSCOPES: svc.web.code-signing:access
+          CSB_AUTH_CLIENTID: ${{ secrets.CODESIGNING_CLIENT_ID }}
+          CSB_AUTH_CLIENTSECRET: ${{ secrets.CODESIGNING_CLIENT_SECRET }}
+        run: csb-cli ${{ env.WIN_EXE }} --silent
+        shell: powershell
+        # USE powershell (desktop) and not default pwsh (core) to access csb.exe in PATH
+        # use csb-cli to avoid successful action run despite failure of code signing
+
+      # modified from https://www.sheldonhull.com/bump-nuspec-file-version-with-powershell/
+      - name: update version in .nuspec file
+        run: |
+          [xml]$xml = Get-Content -path ./choco/pbmanager.nuspec -Raw
+          $ns = [System.Xml.XmlNamespaceManager]::new($xml.NameTable)
+          $ns.AddNamespace('nuspec', 'http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd')
+          $xml.SelectSingleNode('/nuspec:package/nuspec:metadata/nuspec:version', $ns).InnerText = "$env:NEW_VERSION"
+          $xml.Save("./choco/axpbmanagerp.nuspec")
+          
+
+      # only run it if new tag was created
+      - name: create choco package
+        if: ${{ steps.tag_version.outputs.release_type != '' }}
+        run: choco pack ./choco/pbmanager.nuspec --out ./choco/
+
+      # release uses new tag created above and appends executables and .nupkg to assets, changelog.md can be set as body
+      # only run it if new tag was created
+      - name: create release
+        if: ${{ steps.tag_version.outputs.release_type != '' }}
+        uses: softprops/action-gh-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: ${{ contains(fromJSON('["premajor", "preminor", "prepatch", "prerelease"]'),  steps.tag_version.outputs.release_type) }}
+          tag_name: ${{ steps.tag_version.outputs.new_tag }}
+          # use / as separator for windows paths!
+          files: |
+            ./choco/pbmanager.exe
+            ./choco/axp.${{ steps.tag_version.outputs.new_version }}.nupkg
+
+      # only run it if new tag was created
+      - name: push choco package
+        if: ${{ steps.tag_version.outputs.release_type != '' }}
+        env:
+          CHOCO_API_KEY: ${{ secrets.CHOCO_WRITE_TOKEN }}
+        run: choco push ./choco/axp.${{ steps.tag_version.outputs.new_version }}.nupkg --source ${{ vars.CHOCO_REGISTRY }} --api-key $env:CHOCO_API_KEY

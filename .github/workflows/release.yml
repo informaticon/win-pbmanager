@@ -70,7 +70,7 @@ jobs:
           $ns = [System.Xml.XmlNamespaceManager]::new($xml.NameTable)
           $ns.AddNamespace('nuspec', 'http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd')
           $xml.SelectSingleNode('/nuspec:package/nuspec:metadata/nuspec:version', $ns).InnerText = "$env:NEW_VERSION"
-          $xml.Save("./choco/axpbmanagerp.nuspec")
+          $xml.Save("./choco/pbmanager.nuspec")
           
 
       # only run it if new tag was created
@@ -98,4 +98,4 @@ jobs:
         if: ${{ steps.tag_version.outputs.release_type != '' }}
         env:
           CHOCO_API_KEY: ${{ secrets.CHOCO_WRITE_TOKEN }}
-        run: choco push ./choco/axp.${{ steps.tag_version.outputs.new_version }}.nupkg --source ${{ vars.CHOCO_REGISTRY }} --api-key $env:CHOCO_API_KEY
+        run: choco push ./choco/pbmanager.${{ steps.tag_version.outputs.new_version }}.nupkg --source ${{ vars.CHOCO_REGISTRY }} --api-key $env:CHOCO_API_KEY

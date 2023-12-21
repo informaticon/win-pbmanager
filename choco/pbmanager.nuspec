@@ -12,8 +12,12 @@
     <packageSourceUrl>https://github.com/informaticon/dev.win.base.pbmanager</packageSourceUrl>
     <tags>pb-manager orca interface powerbuilder pbmanager</tags>
     <summary>Export and import source code from/into PowerBuilder</summary>
-    <description>See project url: https://github.com/informaticon/dev.win.base.pbmanager</description>
+    <description>See project url: https://git.informaticon.com/informaticon/dev.win.base.pbmanager</description>
     <releaseNotes>
+  ## 1.5.0
+  * Add payroll migration
+  * fix dependencies
+
   ## 0.3.0
   * Switched to Go and C++ Orca Interface
 
@@ -28,6 +32,9 @@
 	* Initial release
 	</releaseNotes>
   </metadata>
+  <dependencies>
+    <dependency id="powerbuilder-runtime" />
+  </dependencies>
   <files>
     <file src="tools\**" target="tools" />
   </files>

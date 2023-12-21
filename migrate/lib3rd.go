@@ -13,9 +13,20 @@ type Libs3rd struct {
 }
 
 func (l *Libs3rd) CopyLibs(libFolder string) error {
-	lib3rdFolder := filepath.Join(libFolder, "../lib - leere 3. Schicht")
-	if !utils.FileExists(lib3rdFolder) {
-		return nil
+	var lib3rdFolder string
+	if filepath.Base(libFolder) == "lib" {
+		lib3rdFolder = filepath.Join(libFolder, "../lib - leere 3. Schicht")
+		if !utils.FileExists(lib3rdFolder) {
+			lib3rdFolder = filepath.Join(libFolder, "../lib - leere 2. und 3. Schicht")
+			if !utils.FileExists(lib3rdFolder) {
+				return nil
+			}
+		}
+	} else if filepath.Base(libFolder) == "lib_lohn" {
+		lib3rdFolder = filepath.Join(libFolder, "../lib_lohn - leere 3. Schicht")
+		if !utils.FileExists(lib3rdFolder) {
+			return nil
+		}
 	}
 
 	files, err := filepath.Glob(filepath.Join(lib3rdFolder) + "/*.pbl")

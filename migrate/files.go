@@ -120,7 +120,7 @@ func InsertNewPbdk(libFolder string) error {
 	return nil
 }
 
-func InsertNewPbdom(libFolder string) error {
+func InsertNewPbdom(libFolder string, appName string) error {
 	pbdomFile, err := utils.GetRessource(urlPbdom)
 	if err != nil {
 		return err
@@ -131,7 +131,7 @@ func InsertNewPbdom(libFolder string) error {
 		return err
 	}
 
-	pbtFilePath := filepath.Join(libFolder, "a3.pbt")
+	pbtFilePath := filepath.Join(libFolder, appName+".pbt")
 	pbtData, err := os.ReadFile(pbtFilePath)
 	if err != nil {
 		return err

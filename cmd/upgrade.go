@@ -59,14 +59,22 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 	}
 	defer orca.Close()
 
-	if pbtData.AppName == "a3" {
-		err = migrateStepB(pbtData.BasePath, orca)
+	var libs3rd migrate.Libs3rd
+
+	err = libs3rd.CopyLibs(pbtData.BasePath)
+	if err != nil {
+		return err
+	}
+	defer libs3rd.CleanupLibs()
+
+	if pbtData.AppName == "a3" || pbtData.AppName == "loh" {
+		err = migrateStepB(pbtData, orca)
 		if err != nil {
 			return err
 		}
 		fmt.Println("Step B done")
 	} else {
-		fmt.Println("Skipping Step B (not an a3 project) ")
+		fmt.Println("Skipping Step B (not an a3/lohn project) ")
 	}
 
 	err = migrateStepC(pbtData, orca)
@@ -100,44 +108,39 @@ func migrateStepC(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	return nil
 }
 
-func migrateStepB(libFolder string, orca *pborca.Orca) (err error) {
-	err = migrate.AddMirrorObjects(libFolder, "a3", orca, printWarn)
+func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
+	err = migrate.AddMirrorObjects(pbtData.BasePath, pbtData.AppName, orca, printWarn)
 	if err != nil {
 		return
 	}
-	err = migrate.FixRegistry(libFolder, "a3", orca, printWarn)
-	if err != nil {
-		return
+	if pbtData.AppName == "a3" {
+		// lohn has no registry object
+		err = migrate.FixRegistry(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+		if err != nil {
+			return
+		}
 	}
-	err = migrate.FixLibInterface(libFolder, "a3", orca, printWarn)
-	if err != nil {
-		return
-	}
-
-	err = migrate.RemoveFiles(libFolder, printWarn)
-	if err != nil {
-		return
-	}
-
-	err = migrate.InsertNewPbdk(libFolder)
+	err = migrate.FixLibInterface(pbtData.BasePath, pbtData.AppName, orca, printWarn)
 	if err != nil {
 		return
 	}
 
-	err = migrate.InsertNewPbdom(libFolder)
+	err = migrate.RemoveFiles(pbtData.BasePath, printWarn)
 	if err != nil {
 		return
 	}
 
-	var libs3rd migrate.Libs3rd
-
-	err = libs3rd.CopyLibs(libFolder)
+	err = migrate.InsertNewPbdk(pbtData.BasePath)
 	if err != nil {
 		return
 	}
-	defer libs3rd.CleanupLibs()
 
-	err = migrate.FixPbInit(libFolder, printWarn)
+	err = migrate.InsertNewPbdom(pbtData.BasePath, pbtData.AppName)
+	if err != nil {
+		return
+	}
+
+	err = migrate.FixPbInit(pbtData.BasePath, printWarn)
 	if err != nil {
 		return
 	}

@@ -14,28 +14,27 @@
     <summary>Export and import source code from/into PowerBuilder</summary>
     <description>See project url: https://git.informaticon.com/informaticon/dev.win.base.pbmanager</description>
     <releaseNotes>
-  
-  ## 1.5.0
-  * Add payroll migration
-  * fix dependencies
+## 1.5.0
+* Add payroll migration
+* fix dependencies
 
-  ## 0.3.0
-  * Switched to Go and C++ Orca Interface
+## 0.3.0
+* Switched to Go and C++ Orca Interface
 
-	## 0.2.2
-	* Improved uninstall script
-	* Renamed the setup exe file
+## 0.2.2
+* Improved uninstall script
+* Renamed the setup exe file
 
-	## 0.2.1
-	* Fixed broken setup
+## 0.2.1
+* Fixed broken setup
 
-	## 0.2.0
-	* Initial release
-	</releaseNotes>
+## 0.2.0
+* Initial release
+    </releaseNotes>
+    <dependencies>
+      <dependency id="powerbuilder-runtime" />
+    </dependencies>
   </metadata>
-  <dependencies>
-    <dependency id="powerbuilder-runtime" />
-  </dependencies>
   <files>
     <file src="tools\**" target="tools" />
   </files>

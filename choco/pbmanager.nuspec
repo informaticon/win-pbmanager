@@ -14,6 +14,7 @@
     <summary>Export and import source code from/into PowerBuilder</summary>
     <description>See project url: https://git.informaticon.com/informaticon/dev.win.base.pbmanager</description>
     <releaseNotes>
+  
   ## 1.5.0
   * Add payroll migration
   * fix dependencies

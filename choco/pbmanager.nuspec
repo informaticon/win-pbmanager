@@ -13,7 +13,11 @@
     <tags>pb-manager orca interface powerbuilder pbmanager</tags>
     <summary>Export and import source code from/into PowerBuilder</summary>
     <description>See project url: https://git.informaticon.com/informaticon/dev.win.base.pbmanager</description>
-    <releaseNotes>
+    <releaseNotes># PowerBuilder Manager
+
+Allows you to upgrade and build PowerBuilder projects.
+Also offers functions for exporting and importing source code and for comparing and merging PBL files.
+
 ## 1.5.0
 * Add payroll migration
 * fix dependencies

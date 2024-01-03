@@ -61,7 +61,7 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 
 	var libs3rd migrate.Libs3rd
 
-	err = libs3rd.CopyLibs(pbtData.BasePath)
+	err = libs3rd.AddMissingLibs(pbtData)
 	if err != nil {
 		return err
 	}

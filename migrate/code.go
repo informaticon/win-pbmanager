@@ -21,7 +21,8 @@ func FixRegistry(libFolder string, targetName string, orca *pborca.Orca, warnFun
 
 	src, err := orca.GetObjSource(pblFile, objName)
 	if err != nil {
-		return err
+		warnFunc(fmt.Sprintf("file %s does not contain an object named %s, skipping", pblFile, objName))
+		return nil
 	}
 	matches := regex.FindAllStringSubmatch(src, -1)
 	if len(matches) != 1 {
@@ -29,7 +30,7 @@ func FixRegistry(libFolder string, targetName string, orca *pborca.Orca, warnFun
 	}
 	if strings.Trim(matches[0][1], " ") != `"a3.exe", "pb170.exe"` &&
 		strings.Trim(matches[0][1], " ") != `"a3.exe", "pb170.exe", "pb220.exe", "pb250.exe"` {
-		warnFunc(fmt.Sprintf("%s in folder %s doesnt contain the expected content (%s)", objName, libFolder, matches[0][1]))
+		warnFunc(fmt.Sprintf("%s in file %s doesnt contain the expected content (%s)", objName, libFolder, matches[0][1]))
 	}
 	src = regex.ReplaceAllString(src, `string is_ie_ole_exes[] = {"a3.exe", "pb170.exe", "pb220.exe", "pb250.exe"}`)
 

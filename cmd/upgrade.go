@@ -109,6 +109,17 @@ func migrateStepC(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 }
 
 func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
+	for i, proj := range pbtData.Projects {
+		if proj.Name == "a3" && proj.PblFile == "inf2.pbl" {
+			_, err := orca.GetObjSource(filepath.Join(pbtData.BasePath, proj.PblFile), "a3.srj")
+			if err == nil {
+				continue
+			}
+			migrate.FixProjLib(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"), proj.Name, "inf2.pbl", "inf1.pbl")
+			pbtData.Projects[i].PblFile = "inf1.pbl"
+
+		}
+	}
 	err = migrate.AddMirrorObjects(pbtData.BasePath, pbtData.AppName, orca, printWarn)
 	if err != nil {
 		return

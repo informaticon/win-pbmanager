@@ -3,6 +3,7 @@ package migrate
 import (
 	"embed"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -113,4 +114,18 @@ func FixRuntimeFolder(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string
 		}
 	}
 	return nil
+}
+
+// FixProjLib replaces wrong project line in pbt file.
+//
+// For example, the Line `@begin Projects\n 0 "1&a3&inf2.pbl";\n@end;`
+// can be replaced with `@begin Projects\n 0 "1&a3&inf1.pbl";\n@end;`
+func FixProjLib(pbtFilePath, projName, oldLib, newLib string) error {
+	pbtData, err := os.ReadFile(pbtFilePath)
+	if err != nil {
+		return err
+	}
+	regr := regexp.MustCompile(`(?mi)(@begin Projects[^@]*?&` + projName + `&)` + oldLib + `(";[^@]*?@end;)`)
+	pbtData = regr.ReplaceAll(pbtData, []byte("${1}"+newLib+"${2}"))
+	return os.WriteFile(pbtFilePath, pbtData, 0664)
 }

@@ -33,7 +33,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
-            "args": ["upgrade", "C:/a3/lib_erp.win.ackeret-bau-ag-che.main/a3.pbt"]
+            "args": ["upgrade", "C:/a3/lib_admo/a3.pbt"]
         }
         
     ]

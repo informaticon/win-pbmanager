@@ -115,7 +115,10 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 			if err == nil {
 				continue
 			}
-			migrate.FixProjLib(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"), proj.Name, "inf2.pbl", "inf1.pbl")
+			err = migrate.FixProjLib(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"), proj.Name, "inf2.pbl", "inf1.pbl")
+			if err != nil {
+				return err
+			}
 			pbtData.Projects[i].PblFile = "inf1.pbl"
 
 		}

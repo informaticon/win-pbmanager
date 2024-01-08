@@ -16,8 +16,8 @@ import (
 //go:embed oldFiles.txt
 var oldFiles string
 
-var urlPbdk = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdk@22.2.0-3238.zip"
-var urlPbdom = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdom@22.2.0-3238.pbd"
+var urlPbdk = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdk@22.2.0-3289.zip"
+var urlPbdom = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdom@22.2.0-3289.pbl"
 
 func RemoveFiles(folder string, warnFunc func(string)) error {
 	lines := strings.Split(string(oldFiles), "\r\n")
@@ -125,7 +125,7 @@ func InsertNewPbdom(libFolder string, appName string) error {
 	if err != nil {
 		return err
 	}
-	dstFileName := filepath.Join(libFolder, "pbdom220.pbd")
+	dstFileName := filepath.Join(libFolder, "pbdom.pbl")
 	err = utils.CopyFile(pbdomFile, dstFileName)
 	if err != nil {
 		return err
@@ -140,7 +140,7 @@ func InsertNewPbdom(libFolder string, appName string) error {
 	// remove old pbdom
 	pbtData = regexp.MustCompile(`(?mi);pbdom[0-9]{3}\.(?:pbl|pbd)`).ReplaceAll(pbtData, []byte{})
 	// add new pbdom
-	pbtData = regexp.MustCompile(`(?mi)^(LibList[ \t]+".*?)";`).ReplaceAll(pbtData, []byte(`$1;pbdom220.pbd";`))
+	pbtData = regexp.MustCompile(`(?mi)^(LibList[ \t]+".*?)";`).ReplaceAll(pbtData, []byte(`$1;pbdom.pbl";`))
 
 	return os.WriteFile(pbtFilePath, pbtData, 0664)
 }

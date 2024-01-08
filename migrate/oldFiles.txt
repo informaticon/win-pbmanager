@@ -6,6 +6,9 @@ pbdom115.pbd
 pbdom170.pbl
 pbdom170.pbx
 pbdom170.pbd
+pbdom220.pbl
+pbdom220.pbx
+pbdom220.pbd
 
 ; PBDK 70
 libjcc.dll

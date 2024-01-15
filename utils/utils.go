@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 )
 
 func FileExists(filePath string) bool {
@@ -48,10 +49,35 @@ func CopyFile(src string, dst string) error {
 	return nil
 }
 
+// GetRessource downloads a blob from an url and caches it for further use.
+// It's needed to get pbdk, some pbl files and other big binary data.
 func GetRessource(url string) (string, error) {
 	dstFilePath := filepath.Join(os.TempDir(), "pbmigrator", path.Base(url))
 	if FileExists(dstFilePath) {
-		return dstFilePath, nil
+		resp, err := http.Head(url)
+		if err != nil {
+			return "", err
+		}
+		// https://stackoverflow.com/questions/70603781/do-i-need-to-close-response-body-of-http-request-even-if-i-dont-read-it
+		defer resp.Body.Close()
+
+		remoteFileModTime, err := time.Parse(time.RFC1123, resp.Header.Get("Last-Modified"))
+		if err != nil {
+			return "", err
+		}
+		localFile, err := os.Stat(dstFilePath)
+		if err != nil {
+			return "", err
+		}
+		// If local is older than remote => replace it
+		if localFile.ModTime().Before(remoteFileModTime) {
+			err = os.Remove(dstFilePath)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			return dstFilePath, nil
+		}
 	}
 
 	err := os.MkdirAll(filepath.Dir(dstFilePath), os.ModePerm)

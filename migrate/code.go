@@ -15,7 +15,7 @@ import (
 	"github.com/informaticon/lib.go.base.pborca/orca"
 )
 
-//go:emebed pb_files/a3_lohn.pbw
+//go:embed pb_files/a3_lohn.pbw
 var pbwA3Lohn []byte
 
 func FixRegistry(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {

@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 
+	_ "embed"
+
 	"github.com/informaticon/dev.win.base.pbmanager/utils"
 	pborca "github.com/informaticon/lib.go.base.pborca"
 	"github.com/informaticon/lib.go.base.pborca/orca"

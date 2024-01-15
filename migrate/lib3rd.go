@@ -11,13 +11,13 @@ import (
 	_ "embed"
 )
 
-//go:embed pbl_files/pbdom170.pbl
+//go:embed pb_files/pbdom170.pbl
 var pblPbdom170 []byte
 
-//go:embed pbl_files/pbdom115.pbl
+//go:embed pb_files/pbdom115.pbl
 var pblPbdom115 []byte
 
-//go:embed pbl_files/empty.pbl
+//go:embed pb_files/empty.pbl
 var pblEmpty []byte
 
 type Libs3rd struct {

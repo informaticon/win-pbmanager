@@ -13,6 +13,9 @@ import (
 	"github.com/informaticon/lib.go.base.pborca/orca"
 )
 
+//go:emebed pb_files/a3_lohn.pbw
+var pbwA3Lohn []byte
+
 func FixRegistry(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
 	pblFile := filepath.Join(libFolder, "inf1.pbl")
 	pbtFile := filepath.Join(libFolder, targetName+".pbt")
@@ -129,4 +132,9 @@ func FixProjLib(pbtFilePath, projName, oldLib, newLib string) error {
 	regr := regexp.MustCompile(`(?mi)(@begin Projects[^@]*?&` + projName + `&)` + oldLib + `(";[^@]*?@end;)`)
 	pbtData = regr.ReplaceAll(pbtData, []byte("${1}"+newLib+"${2}"))
 	return os.WriteFile(pbtFilePath, pbtData, 0664)
+}
+
+// ReplacePayrollPbwFile replaces the pbwFile (to get rid of other targets)
+func ReplacePayrollPbwFile(pbwFilePath string) error {
+	return os.WriteFile(pbwFilePath, pbwA3Lohn, 0664)
 }

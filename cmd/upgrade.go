@@ -158,6 +158,14 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	if err != nil {
 		return
 	}
+
+	if pbtData.AppName == "loh" {
+		err = migrate.ReplacePayrollPbwFile(filepath.Join(pbtData.BasePath, "a3_lohn.pbw"))
+		if err != nil {
+			return
+		}
+	}
+
 	return
 }
 

@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/informaticon/dev.win.base.pbmanager/migrate"
@@ -42,7 +44,8 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 
 		err = doUpgrade(pbtData, orcaVars.pbVersion, opts...)
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			os.Exit(2)
 		}
 		return nil
 	},
@@ -109,6 +112,22 @@ func migrateStepC(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	return nil
 }
 
+func preStepsPb115(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
+	err = migrate.FixLifMetratec(pbtData.BasePath, pbtData.AppName, orca, printWarn, true)
+	if err != nil {
+		return err
+	}
+	err = migrate.InsertNewPbdom(pbtData.BasePath, pbtData.AppName)
+	if err != nil {
+		return
+	}
+	err = migrateStepC(pbtData, orca)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	for i, proj := range pbtData.Projects {
 		if proj.Name == "a3" && proj.PblFile == "inf2.pbl" {
@@ -124,10 +143,18 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 
 		}
 	}
+	if !slices.Contains(pbtData.LibList, filepath.Join(pbtData.BasePath, "pbdom170.pbl")) {
+		err = preStepsPb115(pbtData, orca)
+		if err != nil {
+			return
+		}
+	}
+
 	err = migrate.AddMirrorObjects(pbtData.BasePath, pbtData.AppName, orca, printWarn)
 	if err != nil {
 		return
 	}
+
 	if pbtData.AppName == "a3" {
 		// lohn has no registry object
 		err = migrate.FixRegistry(pbtData.BasePath, pbtData.AppName, orca, printWarn)
@@ -135,7 +162,7 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 			return
 		}
 	}
-	err = migrate.FixLibInterface(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+	err = migrate.FixLifProcess(pbtData.BasePath, pbtData.AppName, orca, printWarn)
 	if err != nil {
 		return
 	}

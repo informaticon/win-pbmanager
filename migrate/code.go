@@ -47,7 +47,7 @@ func FixRegistry(libFolder string, targetName string, orca *pborca.Orca, warnFun
 	return nil
 }
 
-func FixLibInterface(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
+func FixLifProcess(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
 	pblFile := filepath.Join(libFolder, "lif1.pbl")
 	pbtFile := filepath.Join(libFolder, targetName+".pbt")
 	objName := "lif1_u_process"
@@ -70,6 +70,27 @@ func FixLibInterface(libFolder string, targetName string, orca *pborca.Orca, war
 
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// PB115 migration: Replace _DEBUG with CI_DEBUG...
+func FixLifMetratec(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string), ignoreCompileErr bool) error {
+	pblFile := filepath.Join(libFolder, "lif1.pbl")
+	pbtFile := filepath.Join(libFolder, targetName+".pbt")
+	objName := "lif1_u_metratec_base"
+	//if lower(ls_exe) = "pb115.exe" or lower(ls_exe) = "pb170.exe" then
+	regex := regexp.MustCompile(`(?im)([ \t])(_INFO|_FATAL|_ERROR|_DEBUG|_WARN)`)
+
+	src, err := orca.GetObjSource(pblFile, objName)
+	if err != nil {
+		return err
+	}
+	src = regex.ReplaceAllString(src, `${1}CI${2}`)
+
+	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	if err != nil && !ignoreCompileErr {
 		return err
 	}
 	return nil

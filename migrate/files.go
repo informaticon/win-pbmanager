@@ -138,7 +138,7 @@ func InsertNewPbdom(libFolder string, appName string) error {
 	}
 
 	// remove old pbdom
-	pbtData = regexp.MustCompile(`(?mi);pbdom[0-9]{3}\.(?:pbl|pbd)`).ReplaceAll(pbtData, []byte{})
+	pbtData = regexp.MustCompile(`(?mi);pbdom[0-9]{0,3}\.(?:pbl|pbd)`).ReplaceAll(pbtData, []byte{})
 	// add new pbdom
 	pbtData = regexp.MustCompile(`(?mi)^(LibList[ \t]+".*?)";`).ReplaceAll(pbtData, []byte(`$1;pbdom.pbl";`))
 

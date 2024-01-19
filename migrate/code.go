@@ -85,7 +85,11 @@ func FixLifMetratec(libFolder string, targetName string, orca *pborca.Orca, warn
 
 	src, err := orca.GetObjSource(pblFile, objName)
 	if err != nil {
-		return err
+		objName := "inf1_u_metratec_base"
+		src, err = orca.GetObjSource(pblFile, objName)
+		if err != nil {
+			return err
+		}
 	}
 	src = regex.ReplaceAllString(src, `${1}CI${2}`)
 

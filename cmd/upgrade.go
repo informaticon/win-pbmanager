@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"time"
 
@@ -113,17 +114,31 @@ func migrateStepC(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 }
 
 func preStepsPb115(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
-	err = migrate.FixLifMetratec(pbtData.BasePath, pbtData.AppName, orca, printWarn, true)
-	if err != nil {
-		return err
-	}
 	err = migrate.InsertNewPbdom(pbtData.BasePath, pbtData.AppName)
 	if err != nil {
 		return
 	}
+	pblFile := filepath.Join(pbtData.BasePath, "lif1.pbl")
+	pbtFile := filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt")
+
+	objName := "lif1_u_metratec_base"
+	src, err := orca.GetObjSource(pblFile, objName)
+	if err != nil {
+		objName := "inf1_u_metratec_base"
+		src, err = orca.GetObjSource(pblFile, objName)
+		if err != nil {
+			return err
+		}
+	}
+	regex := regexp.MustCompile(`(?im)([ \t])(_INFO|_FATAL|_ERROR|_DEBUG|_WARN)`)
+	src = regex.ReplaceAllString(src, `${1}CI${2}`)
 	err = migrateStepC(pbtData, orca)
 	if err != nil {
-		return err
+		fmt.Println(err)
+	}
+	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	if err != nil {
+		fmt.Println(err)
 	}
 	return nil
 }

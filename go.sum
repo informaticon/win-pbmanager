@@ -21,6 +21,8 @@ github.com/informaticon/lib.go.base.pborca v0.0.0-20231213131800-9cec182c6aa2 h1
 github.com/informaticon/lib.go.base.pborca v0.0.0-20231213131800-9cec182c6aa2/go.mod h1:HhwslHY8pVZ8ivrpSK3pk7OGnNw+uw7jPm/BTblmFbQ=
 github.com/informaticon/lib.go.base.pborca v0.0.0-20231213132840-66d7e9a3a2c8 h1:C0bhXOjlUyhtLF4x3fXSgQOMmKQg+T5Kb/hRJPVpyQ8=
 github.com/informaticon/lib.go.base.pborca v0.0.0-20231213132840-66d7e9a3a2c8/go.mod h1:HhwslHY8pVZ8ivrpSK3pk7OGnNw+uw7jPm/BTblmFbQ=
+github.com/informaticon/lib.go.base.pborca v0.0.0-20240124160337-04d93c4be70a h1:HeImcirXar7YFKFWfHW6n5f/4+f9tnaxTV+OkM80DGQ=
+github.com/informaticon/lib.go.base.pborca v0.0.0-20240124160337-04d93c4be70a/go.mod h1:HhwslHY8pVZ8ivrpSK3pk7OGnNw+uw7jPm/BTblmFbQ=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/spf13/cobra v1.8.0 h1:7aJaZx1B85qltLMc546zn58BxxfZdR/W22ej9CFoEf0=
 github.com/spf13/cobra v1.8.0/go.mod h1:WXLWApfZ71AjXPya3WOlMsY9yMs7YeiHhFVlvLyhcho=

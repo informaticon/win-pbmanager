@@ -8,34 +8,38 @@ import (
 
 	"github.com/informaticon/dev.win.base.pbmanager/utils"
 	pborca "github.com/informaticon/lib.go.base.pborca"
+	"github.com/informaticon/lib.go.base.pborca/orca"
 	"github.com/spf13/cobra"
 )
 
 // exportCmd represents the export command
 var exportCmd = &cobra.Command{
-	Use:   "export [options] <pbl path> <object name> [<dst folder>]",
-	Short: "Exports an object from a pbl file",
+	Use:   "export [options] <pbl/pbt path> --object-name --output-dir",
+	Short: "Exports objects from a pbl/pbt file",
 	Long: `If object name is '*', pbmanager exports all objects within the library.
-With dst folder, you can specify the path where the object(s) are exportet to.`,
-	Args: cobra.RangeArgs(2, 3),
+With --output-dir, you can specify the path where the object(s) are exportet to.`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		pblFilePath := args[0]
-		objName := args[1]
-		if !filepath.IsAbs(pblFilePath) {
-			pblFilePath = filepath.Join(basePath, pblFilePath)
+		objFilePath := args[0]
+		objName, _ := cmd.Flags().GetString("object-name")
+		outputDirectory, _ := cmd.Flags().GetString("output-dir")
+		fileType := filepath.Ext(objFilePath)
+
+		if !filepath.IsAbs(objFilePath) {
+			objFilePath = filepath.Join(basePath, objFilePath)
 		}
-		if !utils.FileExists(pblFilePath) || filepath.Ext(pblFilePath) != ".pbl" {
-			return fmt.Errorf("file %s does not exist or is not a pbl file", pblFilePath)
+		//check if provided objFilePath exists and is allowed
+		if !utils.FileExists(objFilePath) || (fileType != ".pbl" && fileType != ".pbt") {
+			return fmt.Errorf("file %s does not exist or is not a pbl/pbt file", objFilePath)
 		}
-		dstFolderPath := filepath.Join(basePath, "src")
-		if len(args) > 2 {
-			if !filepath.IsAbs(dstFolderPath) {
-				dstFolderPath = filepath.Join(basePath, dstFolderPath)
-			}
-			err := os.MkdirAll(dstFolderPath, os.ModeDir)
-			if err != nil {
-				return err
-			}
+
+		//if no output directory is provided, store the export along side the objFilePath in the src folder
+		if outputDirectory == "" {
+			outputDirectory = filepath.Join(filepath.Dir(objFilePath), "src")
+		}
+		err := os.MkdirAll(outputDirectory, os.ModeDir)
+		if err != nil {
+			return err
 		}
 
 		if orcaVars.pbVersion != 22 {
@@ -51,36 +55,47 @@ With dst folder, you can specify the path where the object(s) are exportet to.`,
 			return err
 		}
 
-		if objName == "*" {
-			err = exportPbl(Orca, pblFilePath, dstFolderPath)
+		if fileType == ".pbt" {
+			err = exportPbt(Orca, objFilePath, outputDirectory)
 			if err != nil {
 				return err
 			}
 		} else {
-			srcData, err := Orca.GetObjSource(pblFilePath, objName)
-			if err != nil {
-				return err
-			}
-			fileName, err := Orca.GetFilenameOfSrc(srcData)
-			if err != nil {
-				return err
-			}
-			err = os.WriteFile(fileName, []byte(srcData), 0664)
-			if err != nil {
-				return err
+			if objName == "*" {
+				err = exportPbl(Orca, objFilePath, outputDirectory)
+				if err != nil {
+					return err
+				}
+
+			} else {
+				srcData, err := Orca.GetObjSource(objFilePath, objName)
+				if err != nil {
+					return err
+				}
+				fileName, err := Orca.GetFilenameOfSrc(srcData)
+				if err != nil {
+					return err
+				}
+				err = os.WriteFile(filepath.Join(outputDirectory, fileName), []byte(srcData), 0664)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
-		fmt.Println("export done")
+		fmt.Println("export finished")
 		return nil
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(exportCmd)
+	exportCmd.PersistentFlags().String("object-name", "*", "inf1_u_application")
+	//exportCmd.PersistentFlags().Lookup("object-name").NoOptDefVal = "*"
+	exportCmd.PersistentFlags().String("output-dir", "", "path to output directory")
 }
 
-func exportPbl(Orca *pborca.Orca, pblFilePath string, dstDir string) error {
+func exportPbl(Orca *pborca.Orca, pblFilePath string, outputDirectory string) error {
 	objs, err := Orca.GetObjList(pblFilePath)
 	if err != nil {
 		return err
@@ -95,11 +110,35 @@ func exportPbl(Orca *pborca.Orca, pblFilePath string, dstDir string) error {
 			if err != nil {
 				return err
 			}
-			err = os.WriteFile(filepath.Join(dstDir, fileName), []byte(srcData), 0664)
+			err = os.WriteFile(filepath.Join(outputDirectory, fileName), []byte(srcData), 0664)
 			if err != nil {
 				return err
 			}
 		}
 	}
+	return nil
+}
+
+func exportPbt(Orca *pborca.Orca, pbtFilePath string, outputDirectory string) error {
+	pbt, err := orca.NewPbtFromFile(pbtFilePath)
+	if err != nil {
+		return err
+	}
+	for _, lib := range pbt.LibList {
+		libName := filepath.Base(lib)
+
+		pblOutputDir := filepath.Join(outputDirectory, libName)
+		err := os.MkdirAll(pblOutputDir, os.ModeDir)
+		if err != nil {
+			return err
+		}
+		fmt.Print("Exporting library ", libName)
+		err = exportPbl(Orca, lib, pblOutputDir)
+		if err != nil {
+			return err
+		}
+		fmt.Println(" done.")
+	}
+
 	return nil
 }

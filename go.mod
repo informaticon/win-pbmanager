@@ -3,7 +3,6 @@ module github.com/informaticon/dev.win.base.pbmanager
 go 1.21.1
 
 require (
-	github.com/informaticon/lib.go.base.pborca v0.0.0-20231213132840-66d7e9a3a2c8
 	github.com/spf13/cobra v1.8.0
 	golang.org/x/sys v0.15.0
 )
@@ -11,6 +10,7 @@ require (
 require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/informaticon/lib.go.base.pborca v0.0.0-20240124160337-04d93c4be70a // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

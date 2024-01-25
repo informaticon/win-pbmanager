@@ -14,11 +14,11 @@ import (
 
 // exportCmd represents the export command
 var exportCmd = &cobra.Command{
-	Use:   "export [options] <pbl/pbt path> --object-name --output-dir",
+	Use:   "export <pbl/pbt path>",
 	Short: "Exports objects from a pbl/pbt file",
-	Long: `If object name is '*', pbmanager exports all objects within the library.
+	Long: `If --object-name is omitted, pbmanager exports all objects within the library.
 With --output-dir, you can specify the path where the object(s) are exportet to.`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.RangeArgs(1, 5),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		objFilePath := args[0]
 		objName, _ := cmd.Flags().GetString("object-name")
@@ -90,8 +90,8 @@ With --output-dir, you can specify the path where the object(s) are exportet to.
 
 func init() {
 	rootCmd.AddCommand(exportCmd)
-	exportCmd.PersistentFlags().String("object-name", "*", "inf1_u_application")
-	//exportCmd.PersistentFlags().Lookup("object-name").NoOptDefVal = "*"
+	exportCmd.PersistentFlags().String("object-name", "*", "name of object to export like inf1_u_application")
+	exportCmd.PersistentFlags().Lookup("object-name").NoOptDefVal = "*"
 	exportCmd.PersistentFlags().String("output-dir", "", "path to output directory")
 }
 

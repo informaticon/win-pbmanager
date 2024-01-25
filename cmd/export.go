@@ -18,12 +18,18 @@ var exportCmd = &cobra.Command{
 	Short: "Exports objects from a pbl/pbt file",
 	Long: `If --object-name is omitted, pbmanager exports all objects within the library.
 With --output-dir, you can specify the path where the object(s) are exportet to.`,
-	Args: cobra.RangeArgs(1, 5),
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		objFilePath := args[0]
 		objName, _ := cmd.Flags().GetString("object-name")
 		outputDirectory, _ := cmd.Flags().GetString("output-dir")
+		createSubDir, _ := cmd.Flags().GetBool("create-subdir")
 		fileType := filepath.Ext(objFilePath)
+
+		//check if user passed the create-subdir flag as it has no effect when exporting .pbt files
+		if cmd.Flags().Lookup("create-subdir").Changed && fileType == ".pbt" {
+			fmt.Println("--create-subdir has no effect when exporting .pbt")
+		}
 
 		if !filepath.IsAbs(objFilePath) {
 			objFilePath = filepath.Join(basePath, objFilePath)
@@ -62,12 +68,19 @@ With --output-dir, you can specify the path where the object(s) are exportet to.
 			}
 		} else {
 			if objName == "*" {
-				err = exportPbl(Orca, objFilePath, outputDirectory)
+				err = exportPbl(Orca, objFilePath, outputDirectory, createSubDir)
 				if err != nil {
 					return err
 				}
 
 			} else {
+				if createSubDir {
+					outputDirectory = filepath.Join(outputDirectory, filepath.Base(objFilePath))
+					err := os.MkdirAll(outputDirectory, os.ModeDir)
+					if err != nil {
+						return err
+					}
+				}
 				srcData, err := Orca.GetObjSource(objFilePath, objName)
 				if err != nil {
 					return err
@@ -90,12 +103,19 @@ With --output-dir, you can specify the path where the object(s) are exportet to.
 
 func init() {
 	rootCmd.AddCommand(exportCmd)
-	exportCmd.PersistentFlags().String("object-name", "*", "name of object to export like inf1_u_application")
-	exportCmd.PersistentFlags().Lookup("object-name").NoOptDefVal = "*"
-	exportCmd.PersistentFlags().String("output-dir", "", "path to output directory")
+	exportCmd.PersistentFlags().StringP("object-name", "n", "*", "name of object to export like inf1_u_application")
+	exportCmd.PersistentFlags().StringP("output-dir", "o", "", "path to output directory (default is <pbl/pbt path>/src")
+	exportCmd.PersistentFlags().BoolP("create-subdir", "s", false, "create a subfolder with the library name to export the source file(s) into")
 }
 
-func exportPbl(Orca *pborca.Orca, pblFilePath string, outputDirectory string) error {
+func exportPbl(Orca *pborca.Orca, pblFilePath string, outputDirectory string, createSubDir bool) error {
+	if createSubDir {
+		outputDirectory = filepath.Join(outputDirectory, filepath.Base(pblFilePath))
+		err := os.MkdirAll(outputDirectory, os.ModeDir)
+		if err != nil {
+			return err
+		}
+	}
 	objs, err := Orca.GetObjList(pblFilePath)
 	if err != nil {
 		return err
@@ -127,13 +147,13 @@ func exportPbt(Orca *pborca.Orca, pbtFilePath string, outputDirectory string) er
 	for _, lib := range pbt.LibList {
 		libName := filepath.Base(lib)
 
-		pblOutputDir := filepath.Join(outputDirectory, libName)
-		err := os.MkdirAll(pblOutputDir, os.ModeDir)
+		pblOutputDirectory := filepath.Join(outputDirectory, libName)
+		err := os.MkdirAll(pblOutputDirectory, os.ModeDir)
 		if err != nil {
 			return err
 		}
 		fmt.Print("Exporting library ", libName)
-		err = exportPbl(Orca, lib, pblOutputDir)
+		err = exportPbl(Orca, lib, pblOutputDirectory, false)
 		if err != nil {
 			return err
 		}

@@ -58,6 +58,14 @@ func init() {
 }
 
 func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) error {
+	var libs3rd migrate.Libs3rd
+
+	err := libs3rd.AddMissingLibs(pbtData)
+	if err != nil {
+		return err
+	}
+	defer libs3rd.CleanupLibs()
+
 	if !slices.Contains(pbtData.LibList, filepath.Join(pbtData.BasePath, "pbdom170.pbl")) {
 		err := migrateFromPb115(pbtData)
 		if err != nil {
@@ -69,14 +77,6 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 		return err
 	}
 	defer orca.Close()
-
-	var libs3rd migrate.Libs3rd
-
-	err = libs3rd.AddMissingLibs(pbtData)
-	if err != nil {
-		return err
-	}
-	defer libs3rd.CleanupLibs()
 
 	if pbtData.AppName == "a3" || pbtData.AppName == "loh" {
 		err = migrateStepB(pbtData, orca)
@@ -121,7 +121,7 @@ func migrateStepC(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 
 func migrateFromPb115(pbtData *orca.Pbt) (err error) {
 	orca, err := pborca.NewOrca(17,
-		pborca.WithOrcaRuntime(`E:/pb-upgrade/pb_runtime_17`),
+		pborca.WithOrcaRuntime(`D:/pb170_pbmanager_files`),
 		pborca.WithOrcaTimeout(3600*time.Second),
 	)
 	if err != nil {
@@ -150,6 +150,7 @@ func migrateFromPb115(pbtData *orca.Pbt) (err error) {
 	if err != nil {
 		return
 	}
+
 	return nil
 }
 
@@ -169,11 +170,6 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 		}
 	}
 
-	err = migrate.AddMirrorObjects(pbtData.BasePath, pbtData.AppName, orca, printWarn)
-	if err != nil {
-		return
-	}
-
 	if pbtData.AppName == "a3" {
 		// lohn has no registry object
 		err = migrate.FixRegistry(pbtData.BasePath, pbtData.AppName, orca, printWarn)
@@ -183,6 +179,11 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	}
 
 	err = migrate.FixLifProcess(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+	if err != nil {
+		return
+	}
+
+	err = migrate.AddMirrorObjects(pbtData.BasePath, pbtData.AppName, orca, printWarn)
 	if err != nil {
 		return
 	}

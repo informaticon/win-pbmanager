@@ -58,6 +58,12 @@ func init() {
 }
 
 func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) error {
+	if !slices.Contains(pbtData.LibList, filepath.Join(pbtData.BasePath, "pbdom170.pbl")) {
+		err := migrateFromPb115(pbtData)
+		if err != nil {
+			return err
+		}
+	}
 	orca, err := pborca.NewOrca(pbVersion, options...)
 	if err != nil {
 		return err
@@ -113,11 +119,15 @@ func migrateStepC(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	return nil
 }
 
-func preStepsPb115(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
-	err = migrate.InsertNewPbdom(pbtData.BasePath, pbtData.AppName)
+func migrateFromPb115(pbtData *orca.Pbt) (err error) {
+	orca, err := pborca.NewOrca(17,
+		pborca.WithOrcaRuntime(`E:/pb-upgrade/pb_runtime_17`),
+		pborca.WithOrcaTimeout(3600*time.Second),
+	)
 	if err != nil {
 		return
 	}
+	defer orca.Close()
 	pblFile := filepath.Join(pbtData.BasePath, "lif1.pbl")
 	pbtFile := filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt")
 
@@ -127,7 +137,7 @@ func preStepsPb115(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 		objName := "inf1_u_metratec_base"
 		src, err = orca.GetObjSource(pblFile, objName)
 		if err != nil {
-			return err
+			return
 		}
 	}
 	regex := regexp.MustCompile(`(?im)([ \t])(_INFO|_FATAL|_ERROR|_DEBUG|_WARN)`)
@@ -138,7 +148,7 @@ func preStepsPb115(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	}
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil {
-		fmt.Println(err)
+		return
 	}
 	return nil
 }
@@ -156,12 +166,6 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 			}
 			pbtData.Projects[i].PblFile = "inf1.pbl"
 
-		}
-	}
-	if !slices.Contains(pbtData.LibList, filepath.Join(pbtData.BasePath, "pbdom170.pbl")) {
-		err = preStepsPb115(pbtData, orca)
-		if err != nil {
-			return
 		}
 	}
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/informaticon/dev.win.base.pbmanager/migrate"
@@ -70,7 +71,6 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 		return err
 	}
 	defer orca.Close()
-
 	err = preMigrateFromPb115(pbtData, orca, printWarn)
 	if err != nil {
 		return err
@@ -92,10 +92,10 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 	}
 	fmt.Println("Step C done")
 
-	/*err = orca.FullBuildTarget(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"))
+	dat, err := orca.FullBuildTarget(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"))
 	if err != nil {
-		return err
-	}*/
+		return fmt.Errorf("%s\n%v", strings.Join(dat, "\n"), err)
+	}
 
 	fmt.Println("Full Build done")
 	return nil
@@ -206,7 +206,7 @@ func preMigrateFromPb115(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(str
 			return
 		}
 	}
-	warnFunc("migration from PB115 project")
+	warnFunc("Start PB115 pre migration")
 
 	regex := regexp.MustCompile(`(?im)([ \t])(_INFO|_FATAL|_ERROR|_DEBUG|_WARN)`)
 	src = regex.ReplaceAllString(src, `${1}CI${2}`)
@@ -218,7 +218,7 @@ func preMigrateFromPb115(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(str
 
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil {
-		fmt.Printf("info: SetObjSource for preMigration of PB115 failed, this can be ignored (%v)", err)
+		fmt.Printf("info: SetObjSource for preMigration of PB115 failed, this can be ignored (%v)\n", err)
 	}
 
 	err = migrateStepC(pbtData, orca)
@@ -231,6 +231,7 @@ func preMigrateFromPb115(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(str
 		return
 	}
 
+	fmt.Println("PB115 pre migration finished")
 	return nil
 }
 

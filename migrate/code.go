@@ -66,6 +66,10 @@ func FixLifProcess(libFolder string, targetName string, orca *pborca.Orca, warnF
 	regex := regexp.MustCompile(`(?mi)[ \t]*if[ ]+(lower\([ ]*ls_exe[ ]*\)[ ]*=[ ]*"pb[0-9]{3}\.exe".*?)then[ ]*`)
 
 	matches := regex.FindAllStringSubmatch(src, -1)
+	if len(matches) == 0 {
+		warnFunc(fmt.Sprintf("skipping %s migration as regex found no match", objName))
+		return nil
+	}
 	if len(matches) != 1 {
 		return fmt.Errorf("FixLifProcess failed: exe string is not present in project %s", libFolder)
 	}

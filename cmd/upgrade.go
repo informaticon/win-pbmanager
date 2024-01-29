@@ -66,17 +66,18 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 	}
 	defer libs3rd.CleanupLibs()
 
-	if !slices.Contains(pbtData.LibList, filepath.Join(pbtData.BasePath, "pbdom170.pbl")) {
-		err := migrateFromPb115(pbtData)
-		if err != nil {
-			return err
-		}
-	}
 	orca, err := pborca.NewOrca(pbVersion, options...)
 	if err != nil {
 		return err
 	}
 	defer orca.Close()
+
+	if !slices.Contains(pbtData.LibList, filepath.Join(pbtData.BasePath, "pbdom170.pbl")) {
+		err := migrateFromPb115(pbtData, orca)
+		if err != nil {
+			return err
+		}
+	}
 
 	if pbtData.AppName == "a3" || pbtData.AppName == "loh" {
 		err = migrateStepB(pbtData, orca)
@@ -119,15 +120,7 @@ func migrateStepC(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	return nil
 }
 
-func migrateFromPb115(pbtData *orca.Pbt) (err error) {
-	orca, err := pborca.NewOrca(17,
-		pborca.WithOrcaRuntime(`D:/pb170_pbmanager_files`),
-		pborca.WithOrcaTimeout(3600*time.Second),
-	)
-	if err != nil {
-		return
-	}
-	defer orca.Close()
+func migrateFromPb115(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	pblFile := filepath.Join(pbtData.BasePath, "lif1.pbl")
 	pbtFile := filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt")
 
@@ -142,11 +135,24 @@ func migrateFromPb115(pbtData *orca.Pbt) (err error) {
 	}
 	regex := regexp.MustCompile(`(?im)([ \t])(_INFO|_FATAL|_ERROR|_DEBUG|_WARN)`)
 	src = regex.ReplaceAllString(src, `${1}CI${2}`)
+
+	err = migrate.InsertNewPbdom(pbtData.BasePath, pbtData.AppName)
+	if err != nil {
+		return
+	}
+
 	err = migrateStepC(pbtData, orca)
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	if err != nil {
+		return
+	}
+
+	out, err := orca.FullBuildTarget(pbtFile)
+	fmt.Println(out)
 	if err != nil {
 		return
 	}

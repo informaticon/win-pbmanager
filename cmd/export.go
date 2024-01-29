@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/informaticon/dev.win.base.pbmanager/utils"
@@ -145,6 +146,10 @@ func exportPbt(Orca *pborca.Orca, pbtFilePath string, outputDirectory string) er
 		return err
 	}
 	for _, lib := range pbt.LibList {
+		if !utils.FileExists(lib) {
+			fmt.Printf("Library %s does not exist, skipping.....\n", lib)
+			continue
+		}
 		libName := filepath.Base(lib)
 
 		pblOutputDirectory := filepath.Join(outputDirectory, libName)
@@ -152,13 +157,26 @@ func exportPbt(Orca *pborca.Orca, pbtFilePath string, outputDirectory string) er
 		if err != nil {
 			return err
 		}
-		fmt.Print("Exporting library ", libName)
+		fmt.Println("Exporting library ", libName)
 		err = exportPbl(Orca, lib, pblOutputDirectory, false)
 		if err != nil {
 			return err
 		}
-		fmt.Println(" done.")
 	}
 
 	return nil
+}
+
+func exportPbtWg(Orca *pborca.Orca, pbtFilePath string, outputDirectory string, wg *sync.WaitGroup) error {
+	defer wg.Done()
+	err := exportPbt(Orca, pbtFilePath, outputDirectory)
+	//wg.Wait()
+	return err
+}
+
+func exportPblWg(Orca *pborca.Orca, pblFilePath string, outputDirectory string, createSubDir bool, wg *sync.WaitGroup) error {
+	defer wg.Done()
+	err := exportPbl(Orca, pblFilePath, outputDirectory, createSubDir)
+	//wg.Wait()
+	return err
 }

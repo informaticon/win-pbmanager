@@ -14,12 +14,19 @@
             "--orca-server", "192.168.57.11:8081",
             "--orca-apikey", "ABCD1234ABCD1234ABCD1234ABCD1234"]
         },{
-            "name": "Diff",
+            "name": "Diff pbt",
             "type": "go",
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
-            "args": ["diff", "C:/a3/erp.win.base.main/lib/inf1.pbl.r260569", "C:/a3/erp.win.base.main/lib/inf1.pbl.r261360"]
+            "args": ["diff", "C:\\a3\\erp.win.bereuter-ag-che.main\\lib\\a3.pbt", "C:\\a3\\erp.win.bgz-demo.main\\lib\\a3.pbt"]
+        },{
+            "name": "Diff PBL",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": ["diff", "C:\\a3\\erp.win.base.main\\lib\\lda1.pbl", "C:\\a3\\erp.win.base.main_2\\lib\\lda1.pbl"]
         },{
             "name": "Upgrade Lohn",
             "type": "go",
@@ -42,6 +49,13 @@
             "program": "${workspaceFolder}",
             "args": ["export", "C:\\a3\\erp.win.base.main\\lib\\a3.pbt"]
         },{
+            "name": "Export pbt no subdir",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": ["export", "C:\\a3\\erp.win.base.main\\lib\\a3.pbt","--output-dir", "C:\\a3\\erp.win.base.main\\lib\\srrrc","--create-subdir=false"] 
+        },{
             "name": "Export lda",
             "type": "go",
             "request": "launch",
@@ -49,12 +63,26 @@
             "program": "${workspaceFolder}",
             "args": ["export", "C:\\a3\\erp.win.base.main\\lib\\lda1.pbl","--output-dir", "C:\\a3\\erp.win.base.main\\lib\\src"]
         },{
+            "name": "Export lda create subdir",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": ["export", "C:\\a3\\erp.win.base.main\\lib\\lda1.pbl","--output-dir", "C:\\a3\\erp.win.base.main\\lib\\src", "--create-subdir=true"]
+        },{
             "name": "Export w_lda_dis_import_reset",
             "type": "go",
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
             "args": ["export", "C:\\a3\\erp.win.base.main\\lib\\lda1.pbl","--object-name", "w_lda_dis_import_reset", "--output-dir", "C:\\a3\\erp.win.base.main\\lib\\src"]
+        },{
+            "name": "Export w_lda_dis_import_reset subdir",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": ["export", "C:\\a3\\erp.win.base.main\\lib\\lda1.pbl","--object-name", "w_lda_dis_import_reset", "--output-dir", "C:\\a3\\erp.win.base.main\\lib\\src", "--create-subdir=true"]
         }
         
     ]

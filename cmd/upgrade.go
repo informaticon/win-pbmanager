@@ -181,6 +181,7 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 			return
 		}
 	}
+
 	err = migrate.FixLifProcess(pbtData.BasePath, pbtData.AppName, orca, printWarn)
 	if err != nil {
 		return
@@ -199,6 +200,13 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	err = migrate.InsertNewPbdom(pbtData.BasePath, pbtData.AppName)
 	if err != nil {
 		return
+	}
+
+	if pbtData.AppName == "loh" {
+		err = migrate.FixLohXmlDecl(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+		if err != nil {
+			return
+		}
 	}
 
 	err = migrate.FixPbInit(pbtData.BasePath, printWarn)

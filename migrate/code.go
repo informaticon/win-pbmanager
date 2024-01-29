@@ -101,6 +101,30 @@ func FixLifMetratec(libFolder string, targetName string, orca *pborca.Orca, warn
 	return nil
 }
 
+// PB115 migration: Replace _DEBUG with CI_DEBUG...
+func FixLohXmlDecl(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
+	pbtFile := filepath.Join(libFolder, targetName+".pbt")
+	regex1 := regexp.MustCompile(`(?im)lpbdom_pi.setname\('xml'\)[\r\n\t ]+lpbdom_pi.SetData\('version="1\.0" encoding="UTF-8"'\)[\t ]+`)
+	regex2 := regexp.MustCompile(`[\r\n\t ]+(?im)ipbdom_document.addcontent\(lpbdom_pi\)[\t ]+`)
+	for objName, pblFile := range map[string]string{
+		"loh1_u_loh_xml_salary_declaration": filepath.Join(libFolder, "loh1.pbl"),
+		"elm1_u_elm_xml_salary_declaration": filepath.Join(libFolder, "elmg.pbl"),
+	} {
+		src, err := orca.GetObjSource(pblFile, objName)
+		if err != nil {
+			return fmt.Errorf("FixLohXmlDecl failed on %s: %v", objName, err)
+		}
+		src = regex1.ReplaceAllString(src, `ipbdom_document.setxmldeclaration("1.0", "UTF-8", "yes")`)
+		src = regex2.ReplaceAllString(src, ``)
+
+		err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+		if err != nil {
+			return fmt.Errorf("FixLohXmlDecl failed on %s: %v", objName, err)
+		}
+	}
+	return nil
+}
+
 //go:embed mirror_objects/*.sr*
 var mirrorFiles embed.FS
 

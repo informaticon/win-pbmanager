@@ -26,22 +26,22 @@ func FixRegistry(libFolder string, targetName string, orca *pborca.Orca, warnFun
 
 	src, err := orca.GetObjSource(pblFile, objName)
 	if err != nil {
-		warnFunc(fmt.Sprintf("file %s does not contain an object named %s, skipping", pblFile, objName))
+		warnFunc(fmt.Sprintf("skipping inf1_u_registry migration (file %s does not contain an object named %s)", pblFile, objName))
 		return nil
 	}
 	matches := regex.FindAllStringSubmatch(src, -1)
 	if len(matches) != 1 {
-		return fmt.Errorf("ole string is not present in project %s", libFolder)
+		return fmt.Errorf("FixRegistry failed: ole string is not present in project %s", libFolder)
 	}
 	if strings.Trim(matches[0][1], " ") != `"a3.exe", "pb170.exe"` &&
 		strings.Trim(matches[0][1], " ") != `"a3.exe", "pb170.exe", "pb220.exe", "pb250.exe"` {
-		warnFunc(fmt.Sprintf("%s in file %s doesnt contain the expected content (%s)", objName, libFolder, matches[0][1]))
+		warnFunc(fmt.Sprintf("  %s in file %s doesnt contain the expected content (%s)", objName, libFolder, matches[0][1]))
 	}
 	src = regex.ReplaceAllString(src, `string is_ie_ole_exes[] = {"a3.exe", "pb170.exe", "pb220.exe", "pb250.exe"}`)
 
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil {
-		return err
+		return fmt.Errorf("FixRegistry failed: %v", err)
 	}
 
 	return nil
@@ -56,21 +56,22 @@ func FixLifProcess(libFolder string, targetName string, orca *pborca.Orca, warnF
 
 	src, err := orca.GetObjSource(pblFile, objName)
 	if err != nil {
-		return err
+		fmt.Printf("skipping lif1_u_process migration (%v)\n", err)
+		return nil
 	}
 	matches := regex.FindAllStringSubmatch(src, -1)
 	if len(matches) != 1 {
-		return fmt.Errorf("exe string is not present in project %s", libFolder)
+		return fmt.Errorf("FixLifProcess failed: exe string is not present in project %s", libFolder)
 	}
 	if strings.Trim(matches[0][1], " ") != `lower(ls_exe) = "pb115.exe" or lower(ls_exe) = "pb170.exe"` &&
 		strings.Trim(matches[0][1], " ") != `lower(ls_exe) = "pb170.exe" or lower(ls_exe) = "pb220.exe" or lower(ls_exe) = "pb250.exe"` {
-		warnFunc(fmt.Sprintf("%s in folder %s doesnt contain the expected content (%s)", objName, libFolder, matches[0][1]))
+		warnFunc(fmt.Sprintf("  %s in folder %s doesnt contain the expected content (%s)", objName, libFolder, matches[0][1]))
 	}
 	src = regex.ReplaceAllString(src, `	if lower(ls_exe) = "pb170.exe" or lower(ls_exe) = "pb220.exe" or lower(ls_exe) = "pb250.exe" then`)
 
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil {
-		return err
+		return fmt.Errorf("FixLifProcess failed: %v", err)
 	}
 	return nil
 }
@@ -80,7 +81,7 @@ func FixLifMetratec(libFolder string, targetName string, orca *pborca.Orca, warn
 	pblFile := filepath.Join(libFolder, "lif1.pbl")
 	pbtFile := filepath.Join(libFolder, targetName+".pbt")
 	objName := "lif1_u_metratec_base"
-	//if lower(ls_exe) = "pb115.exe" or lower(ls_exe) = "pb170.exe" then
+
 	regex := regexp.MustCompile(`(?im)([ \t])(_INFO|_FATAL|_ERROR|_DEBUG|_WARN)`)
 
 	src, err := orca.GetObjSource(pblFile, objName)
@@ -88,14 +89,14 @@ func FixLifMetratec(libFolder string, targetName string, orca *pborca.Orca, warn
 		objName := "inf1_u_metratec_base"
 		src, err = orca.GetObjSource(pblFile, objName)
 		if err != nil {
-			return err
+			return fmt.Errorf("FixLifMetratec failed: %v", err)
 		}
 	}
 	src = regex.ReplaceAllString(src, `${1}CI${2}`)
 
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil && !ignoreCompileErr {
-		return err
+		return fmt.Errorf("FixLifMetratec failed: %v", err)
 	}
 	return nil
 }
@@ -108,18 +109,18 @@ func AddMirrorObjects(libFolder string, targetName string, orca *pborca.Orca, wa
 	pbtFile := filepath.Join(libFolder, targetName+".pbt")
 	files, err := mirrorFiles.ReadDir("mirror_objects")
 	if err != nil {
-		return err
+		return fmt.Errorf("AddMirrorObjects failed: %v", err)
 	}
 	for _, file := range files {
 		objSrc, err := mirrorFiles.ReadFile("mirror_objects/" + file.Name())
 		if err != nil {
-			return err
+			return fmt.Errorf("AddMirrorObjects failed: %v", err)
 		}
 		objName := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
 
 		err = orca.SetObjSource(pbtFile, pblFile, objName, string(objSrc))
 		if err != nil {
-			return err
+			return fmt.Errorf("AddMirrorObjects failed: %v", err)
 		}
 	}
 	return nil
@@ -136,12 +137,12 @@ func FixRuntimeFolder(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string
 		pblFile := filepath.Join(pbtData.BasePath, proj.PblFile)
 		src, err := orca.GetObjSource(pblFile, proj.Name+".srj")
 		if err != nil {
-			return err
+			return fmt.Errorf("FixRuntimeFolder failed: %v", err)
 		}
 		src = regexp.MustCompile(`(?mi)^(EXE:.*?)[A-Z]:\\[^,]+$`).ReplaceAllString(src, "$1.\\pbdk\r\n")
 		err = orca.SetObjSource(pbtFile, pblFile, proj.Name, src)
 		if err != nil {
-			return err
+			return fmt.Errorf("FixRuntimeFolder failed: %v", err)
 		}
 	}
 	return nil
@@ -154,11 +155,15 @@ func FixRuntimeFolder(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string
 func FixProjLib(pbtFilePath, projName, oldLib, newLib string) error {
 	pbtData, err := os.ReadFile(pbtFilePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("FixProjLib failed: %v", err)
 	}
 	regr := regexp.MustCompile(`(?mi)(@begin Projects[^@]*?&` + projName + `&)` + oldLib + `(";[^@]*?@end;)`)
 	pbtData = regr.ReplaceAll(pbtData, []byte("${1}"+newLib+"${2}"))
-	return os.WriteFile(pbtFilePath, pbtData, 0664)
+	err = os.WriteFile(pbtFilePath, pbtData, 0664)
+	if err != nil {
+		return fmt.Errorf("FixProjLib failed: %v", err)
+	}
+	return nil
 }
 
 // ReplacePayrollPbwFile replaces the pbwFile (to get rid of other targets)

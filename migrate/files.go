@@ -34,10 +34,14 @@ func RemoveFiles(folder string, warnFunc func(string)) error {
 
 		err := os.Remove(filepath.Join(folder, line))
 		if err != nil {
-			return err
+			return fmt.Errorf("RemoveFiles failed: %v", err)
 		}
 	}
-	return utils.RemoveGlob(fmt.Sprintf("%s/*.*", filepath.Join(folder, "pbdk")))
+	err := utils.RemoveGlob(fmt.Sprintf("%s/*.*", filepath.Join(folder, "pbdk")))
+	if err != nil {
+		return fmt.Errorf("RemoveFiles failed: %v", err)
+	}
+	return nil
 }
 
 func FixPbInit(folder string, warnFunc func(string)) error {
@@ -50,7 +54,7 @@ func FixPbInit(folder string, warnFunc func(string)) error {
 	}
 	src, err := os.ReadFile(file)
 	if err != nil {
-		return err
+		return fmt.Errorf("FixPbInit failed: %v", err)
 	}
 
 	// Comment out Accessibility setting
@@ -75,17 +79,21 @@ func FixPbInit(folder string, warnFunc func(string)) error {
 	}
 	src = append(src, valAccessibility[2]...)
 
-	return os.WriteFile(file, src, 0664)
+	err = os.WriteFile(file, src, 0664)
+	if err != nil {
+		return fmt.Errorf("FixPbInit failed: %v", err)
+	}
+	return nil
 }
 
 func InsertNewPbdk(libFolder string) error {
 	pbdkZipFile, err := utils.GetRessource(urlPbdk)
 	if err != nil {
-		return err
+		return fmt.Errorf("InsertNewPbdk failed while downloading pbdk: %v", err)
 	}
 	pbdkZip, err := zip.OpenReader(pbdkZipFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("InsertNewPbdk failed while opening zip file: %v", err)
 	}
 	defer pbdkZip.Close()
 
@@ -97,23 +105,23 @@ func InsertNewPbdk(libFolder string) error {
 		}
 		err := os.MkdirAll(filepath.Dir(dstPath), os.ModePerm)
 		if err != nil {
-			return err
+			return fmt.Errorf("InsertNewPbdk failed while creating dir: %v", err)
 		}
 		dstFile, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, srcFSObj.Mode())
 		if err != nil {
-			return err
+			return fmt.Errorf("InsertNewPbdk failed while opening dst file: %v", err)
 		}
 		defer dstFile.Close()
 
 		srcFile, err := srcFSObj.Open()
 		if err != nil {
-			return err
+			return fmt.Errorf("InsertNewPbdk failed while reading zip file: %v", err)
 		}
 		defer srcFile.Close()
 
 		_, err = io.Copy(dstFile, srcFile)
 		if err != nil {
-			return err
+			return fmt.Errorf("InsertNewPbdk failed while copying file: %v", err)
 		}
 	}
 
@@ -123,18 +131,18 @@ func InsertNewPbdk(libFolder string) error {
 func InsertNewPbdom(libFolder string, appName string) error {
 	pbdomFile, err := utils.GetRessource(urlPbdom)
 	if err != nil {
-		return err
+		return fmt.Errorf("InsertNewPbdom failed: %v", err)
 	}
 	dstFileName := filepath.Join(libFolder, "pbdom.pbl")
 	err = utils.CopyFile(pbdomFile, dstFileName)
 	if err != nil {
-		return err
+		return fmt.Errorf("InsertNewPbdom failed: %v", err)
 	}
 
 	pbtFilePath := filepath.Join(libFolder, appName+".pbt")
 	pbtData, err := os.ReadFile(pbtFilePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("InsertNewPbdom failed: %v", err)
 	}
 
 	// remove old pbdom
@@ -142,5 +150,9 @@ func InsertNewPbdom(libFolder string, appName string) error {
 	// add new pbdom
 	pbtData = regexp.MustCompile(`(?mi)^(LibList[ \t]+".*?)";`).ReplaceAll(pbtData, []byte(`$1;pbdom.pbl";`))
 
-	return os.WriteFile(pbtFilePath, pbtData, 0664)
+	err = os.WriteFile(pbtFilePath, pbtData, 0664)
+	if err != nil {
+		return fmt.Errorf("InsertNewPbdom failed: %v", err)
+	}
+	return nil
 }

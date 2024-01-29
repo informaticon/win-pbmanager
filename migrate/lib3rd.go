@@ -40,7 +40,7 @@ func (l *Libs3rd) AddMissingLibs(pbtData *orca.Pbt) error {
 				l.copiedFiles = append(l.copiedFiles, lib)
 			}
 			if err != nil {
-				return err
+				return fmt.Errorf("AddMissingLibs failed: %v", err)
 			}
 
 		}
@@ -51,7 +51,7 @@ func (l *Libs3rd) CleanupLibs() error {
 	for len(l.copiedFiles) > 0 {
 		err := os.Remove(l.copiedFiles[len(l.copiedFiles)-1])
 		if err != nil {
-			return err
+			return fmt.Errorf("CleanupLibs failed: %v", err)
 		}
 		l.copiedFiles = slices.Delete(l.copiedFiles, len(l.copiedFiles)-1, len(l.copiedFiles))
 	}

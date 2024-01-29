@@ -101,11 +101,11 @@ func FixLifMetratec(libFolder string, targetName string, orca *pborca.Orca, warn
 	return nil
 }
 
-// PB115 migration: Replace _DEBUG with CI_DEBUG...
+// FixLohXmlDecl removes deprecated use of pbdom_processinginstruction
 func FixLohXmlDecl(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
 	pbtFile := filepath.Join(libFolder, targetName+".pbt")
 	regex1 := regexp.MustCompile(`(?im)lpbdom_pi.setname\('xml'\)[\r\n\t ]+lpbdom_pi.SetData\('version="1\.0" encoding="UTF-8"'\)[\t ]+`)
-	regex2 := regexp.MustCompile(`[\r\n\t ]+(?im)ipbdom_document.addcontent\(lpbdom_pi\)[\t ]+`)
+	regex2 := regexp.MustCompile(`(?im)[\r\n\t ]+ipbdom_document.addcontent\(lpbdom_pi\)[\t ]+`)
 	for objName, pblFile := range map[string]string{
 		"loh1_u_loh_xml_salary_declaration": filepath.Join(libFolder, "loh1.pbl"),
 		"elm1_u_elm_xml_salary_declaration": filepath.Join(libFolder, "elmg.pbl"),

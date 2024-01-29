@@ -33,7 +33,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
-            "args": ["upgrade", "C:/a3/erp.win.base.main/lib_lohn/loh.pbt"]
+            "args": ["upgrade", "C:/a3/bgz1.0.0/lib/a3.pbt"]
         }
         
     ]

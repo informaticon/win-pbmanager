@@ -112,7 +112,8 @@ func FixLohXmlDecl(libFolder string, targetName string, orca *pborca.Orca, warnF
 	} {
 		src, err := orca.GetObjSource(pblFile, objName)
 		if err != nil {
-			return fmt.Errorf("FixLohXmlDecl failed on %s: %v", objName, err)
+			warnFunc(fmt.Sprintf("skipping %s migration (does not exist in %s)", objName, pblFile))
+			continue
 		}
 		src = regex1.ReplaceAllString(src, `ipbdom_document.setxmldeclaration("1.0", "UTF-8", "yes")`)
 		src = regex2.ReplaceAllString(src, ``)

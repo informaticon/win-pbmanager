@@ -221,6 +221,10 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 		}
 	}
 
+	if utils.FileExists(filepath.Join(pbtData.BasePath, pbtData.AppName+".exe")) {
+		os.Remove(filepath.Join(pbtData.BasePath, pbtData.AppName+".exe"))
+	}
+
 	return
 }
 

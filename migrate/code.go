@@ -50,16 +50,26 @@ func FixRegistry(libFolder string, targetName string, orca *pborca.Orca, warnFun
 func FixLifProcess(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
 	pblFile := filepath.Join(libFolder, "lif1.pbl")
 	pbtFile := filepath.Join(libFolder, targetName+".pbt")
+
 	objName := "lif1_u_process"
+	src, err := orca.GetObjSource(pblFile, objName)
+	if err != nil {
+		objName = "inf1_u_process"
+		src, err = orca.GetObjSource(pblFile, objName)
+		if err != nil {
+			fmt.Printf("skipping %s migration (%v)\n", objName, err)
+			return nil
+		}
+	}
+
 	//if lower(ls_exe) = "pb115.exe" or lower(ls_exe) = "pb170.exe" then
 	regex := regexp.MustCompile(`(?mi)[ \t]*if[ ]+(lower\([ ]*ls_exe[ ]*\)[ ]*=[ ]*"pb[0-9]{3}\.exe".*?)then[ ]*`)
 
-	src, err := orca.GetObjSource(pblFile, objName)
-	if err != nil {
-		fmt.Printf("skipping lif1_u_process migration (%v)\n", err)
+	matches := regex.FindAllStringSubmatch(src, -1)
+	if len(matches) == 0 {
+		warnFunc(fmt.Sprintf("skipping %s migration as regex found no match", objName))
 		return nil
 	}
-	matches := regex.FindAllStringSubmatch(src, -1)
 	if len(matches) != 1 {
 		return fmt.Errorf("FixLifProcess failed: exe string is not present in project %s", libFolder)
 	}
@@ -68,7 +78,6 @@ func FixLifProcess(libFolder string, targetName string, orca *pborca.Orca, warnF
 		warnFunc(fmt.Sprintf("  %s in folder %s doesnt contain the expected content (%s)", objName, libFolder, matches[0][1]))
 	}
 	src = regex.ReplaceAllString(src, `	if lower(ls_exe) = "pb170.exe" or lower(ls_exe) = "pb220.exe" or lower(ls_exe) = "pb250.exe" then`)
-
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil {
 		return fmt.Errorf("FixLifProcess failed: %v", err)
@@ -80,10 +89,8 @@ func FixLifProcess(libFolder string, targetName string, orca *pborca.Orca, warnF
 func FixLifMetratec(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string), ignoreCompileErr bool) error {
 	pblFile := filepath.Join(libFolder, "lif1.pbl")
 	pbtFile := filepath.Join(libFolder, targetName+".pbt")
+
 	objName := "lif1_u_metratec_base"
-
-	regex := regexp.MustCompile(`(?im)([ \t])(_INFO|_FATAL|_ERROR|_DEBUG|_WARN)`)
-
 	src, err := orca.GetObjSource(pblFile, objName)
 	if err != nil {
 		objName := "inf1_u_metratec_base"
@@ -92,8 +99,9 @@ func FixLifMetratec(libFolder string, targetName string, orca *pborca.Orca, warn
 			return fmt.Errorf("FixLifMetratec failed: %v", err)
 		}
 	}
-	src = regex.ReplaceAllString(src, `${1}CI${2}`)
 
+	regex := regexp.MustCompile(`(?im)([ \t])(_INFO|_FATAL|_ERROR|_DEBUG|_WARN)`)
+	src = regex.ReplaceAllString(src, `${1}CI${2}`)
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil && !ignoreCompileErr {
 		return fmt.Errorf("FixLifMetratec failed: %v", err)

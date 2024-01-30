@@ -17,8 +17,20 @@ var pblPbdom170 []byte
 //go:embed pb_files/pbdom115.pbl
 var pblPbdom115 []byte
 
+//go:embed pb_files/exf1.pbl
+var pblExf1 []byte
+
+//go:embed pb_files/grp1.pbl
+var pblGrp1 []byte
+
 //go:embed pb_files/liq1.pbl
 var pblLiq1 []byte
+
+//go:embed pb_files/net1.pbl
+var pblNet1 []byte
+
+//go:embed pb_files/str1.pbl
+var pblStr1 []byte
 
 //go:embed pb_files/empty.pbl
 var pblEmpty []byte
@@ -37,8 +49,20 @@ func (l *Libs3rd) AddMissingLibs(pbtData *orca.Pbt) error {
 			case "pbdom115.pbl":
 				err = os.WriteFile(lib, pblPbdom115, 0664)
 				fmt.Printf("  add missing pbl %s\n", filepath.Base(lib))
+			case "exf1.pbl":
+				err = os.WriteFile(lib, pblExf1, 0664)
+				fmt.Printf("  add missing pbl %s\n", filepath.Base(lib))
+			case "grp1.pbl":
+				err = os.WriteFile(lib, pblGrp1, 0664)
+				fmt.Printf("  add missing pbl %s\n", filepath.Base(lib))
 			case "liq1.pbl":
 				err = os.WriteFile(lib, pblLiq1, 0664)
+				fmt.Printf("  add missing pbl %s\n", filepath.Base(lib))
+			case "net1.pbl":
+				err = os.WriteFile(lib, pblNet1, 0664)
+				fmt.Printf("  add missing pbl %s\n", filepath.Base(lib))
+			case "str1.pbl":
+				err = os.WriteFile(lib, pblStr1, 0664)
 				fmt.Printf("  add missing pbl %s\n", filepath.Base(lib))
 			default:
 				err = os.WriteFile(lib, pblEmpty, 0664)

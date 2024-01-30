@@ -109,8 +109,8 @@ func FixLifMetratec(libFolder string, targetName string, orca *pborca.Orca, warn
 	return nil
 }
 
-// FixLohXmlDecl removes deprecated use of pbdom_processinginstruction
-func FixLohXmlDecl(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
+// FixPayrollXmlDecl removes deprecated use of pbdom_processinginstruction
+func FixPayrollXmlDecl(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
 	pbtFile := filepath.Join(libFolder, targetName+".pbt")
 	regex1 := regexp.MustCompile(`(?im)lpbdom_pi.setname\('xml'\)[\r\n\t ]+lpbdom_pi.SetData\('version="1\.0" encoding="UTF-8"'\)[\t ]+`)
 	regex2 := regexp.MustCompile(`(?im)[\r\n\t ]+ipbdom_document.addcontent\(lpbdom_pi\)[\t ]+`)
@@ -155,6 +155,27 @@ func AddMirrorObjects(libFolder string, targetName string, orca *pborca.Orca, wa
 		if err != nil {
 			return fmt.Errorf("AddMirrorObjects failed: %v", err)
 		}
+	}
+	return nil
+}
+
+func ChangePbdomBuildOptions(projLibName string, projName string, pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)) error {
+
+	pblFile := filepath.Join(pbtData.BasePath, projLibName)
+	pbtFile := filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt")
+
+	objName := projName
+	src, err := orca.GetObjSource(pblFile, objName+".srj")
+	if err != nil {
+		warnFunc(fmt.Sprintf("skipping ChangePbdomBuildOption, as the source of the project file %s could not be found in %s(%v)", objName, projLibName, err))
+		return nil
+	}
+
+	regex := regexp.MustCompile(`(?im)(PBD:pbdom170\.pbl,,[01])`)
+	src = regex.ReplaceAllString(src, `PBD:pbdom.pbl,,1`)
+	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	if err != nil {
+		return fmt.Errorf("ChangePbdomBuildOptions failed: %v", err)
 	}
 	return nil
 }

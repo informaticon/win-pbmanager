@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -109,11 +110,21 @@ func migrateStepC(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 		fmt.Println(log)
 		return
 	}
+
 	err = migrate.FixRuntimeFolder(pbtData, orca, printWarn)
 	if err != nil {
 		return
 	}
+	for _, proj := range pbtData.Projects {
+		err = migrate.ChangePbdomBuildOptions(proj.PblFile, proj.Name, pbtData, orca, printWarn)
+		if err != nil && slices.Contains([]string{"a3", "loh"}, proj.Name) {
+			return
+		}
+	}
 
+	if err != nil {
+		return
+	}
 	return nil
 }
 
@@ -167,7 +178,7 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	}
 
 	if pbtData.AppName == "loh" {
-		err = migrate.FixLohXmlDecl(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+		err = migrate.FixPayrollXmlDecl(pbtData.BasePath, pbtData.AppName, orca, printWarn)
 		if err != nil {
 			return
 		}

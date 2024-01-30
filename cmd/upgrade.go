@@ -105,10 +105,13 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 func migrateStepC(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	pbtFilePath := filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt")
 
-	log, err := orca.MigrateTarget(pbtFilePath)
+	_, err = orca.MigrateTarget(pbtFilePath)
 	if err != nil {
-		fmt.Println(log)
-		return
+		fmt.Printf("Migration of %s failed, tring to do a full build...\n", pbtFilePath)
+		out, err := orca.FullBuildTarget(pbtFilePath)
+		if err != nil {
+			return fmt.Errorf("migration of %s failed, compiler log\n%s\nORCA Error:%v", pbtFilePath, strings.Join(out, "\n"), err)
+		}
 	}
 
 	err = migrate.FixRuntimeFolder(pbtData, orca, printWarn)

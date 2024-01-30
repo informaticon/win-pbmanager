@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
+	"strings"
 	"time"
 
 	"github.com/informaticon/dev.win.base.pbmanager/migrate"
@@ -71,12 +71,9 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 		return err
 	}
 	defer orca.Close()
-
-	if !slices.Contains(pbtData.LibList, filepath.Join(pbtData.BasePath, "pbdom170.pbl")) {
-		err := migrateFromPb115(pbtData, orca)
-		if err != nil {
-			return err
-		}
+	err = preMigrateFromPb115(pbtData, orca, printWarn)
+	if err != nil {
+		return err
 	}
 
 	if pbtData.AppName == "a3" || pbtData.AppName == "loh" {
@@ -95,10 +92,10 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 	}
 	fmt.Println("Step C done")
 
-	/*err = orca.FullBuildTarget(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"))
+	dat, err := orca.FullBuildTarget(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"))
 	if err != nil {
-		return err
-	}*/
+		return fmt.Errorf("%s\n%v", strings.Join(dat, "\n"), err)
+	}
 
 	fmt.Println("Full Build done")
 	return nil
@@ -113,46 +110,6 @@ func migrateStepC(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 		return
 	}
 	err = migrate.FixRuntimeFolder(pbtData, orca, printWarn)
-	if err != nil {
-		return
-	}
-
-	return nil
-}
-
-func migrateFromPb115(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
-	pblFile := filepath.Join(pbtData.BasePath, "lif1.pbl")
-	pbtFile := filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt")
-
-	objName := "lif1_u_metratec_base"
-	src, err := orca.GetObjSource(pblFile, objName)
-	if err != nil {
-		objName := "inf1_u_metratec_base"
-		src, err = orca.GetObjSource(pblFile, objName)
-		if err != nil {
-			return
-		}
-	}
-	regex := regexp.MustCompile(`(?im)([ \t])(_INFO|_FATAL|_ERROR|_DEBUG|_WARN)`)
-	src = regex.ReplaceAllString(src, `${1}CI${2}`)
-
-	err = migrate.InsertNewPbdom(pbtData.BasePath, pbtData.AppName)
-	if err != nil {
-		return
-	}
-
-	err = migrateStepC(pbtData, orca)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
-	if err != nil {
-		return
-	}
-
-	out, err := orca.FullBuildTarget(pbtFile)
-	fmt.Println(out)
 	if err != nil {
 		return
 	}
@@ -233,6 +190,49 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	}
 
 	return
+}
+
+// preMigrateFromPb115 does some steps which are needed to migrate from PB115
+func preMigrateFromPb115(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)) (err error) {
+	pblFile := filepath.Join(pbtData.BasePath, "lif1.pbl")
+	pbtFile := filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt")
+
+	objName := "lif1_u_metratec_base"
+	src, err := orca.GetObjSource(pblFile, objName)
+	if err != nil {
+		objName = "inf1_u_metratec_base"
+		src, err = orca.GetObjSource(pblFile, objName)
+		if err != nil {
+			return
+		}
+	}
+	warnFunc("Start PB115 pre migration")
+
+	regex := regexp.MustCompile(`(?im)([ \t])(_INFO|_FATAL|_ERROR|_DEBUG|_WARN)`)
+	src = regex.ReplaceAllString(src, `${1}CI${2}`)
+
+	err = migrate.InsertNewPbdom(pbtData.BasePath, pbtData.AppName)
+	if err != nil {
+		return
+	}
+
+	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	if err != nil {
+		fmt.Printf("info: SetObjSource for preMigration of PB115 failed, this can be ignored (%v)\n", err)
+	}
+
+	err = migrateStepC(pbtData, orca)
+	if err != nil {
+		return
+	}
+
+	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	if err != nil {
+		return
+	}
+
+	fmt.Println("PB115 pre migration finished")
+	return nil
 }
 
 func printWarn(message string) {

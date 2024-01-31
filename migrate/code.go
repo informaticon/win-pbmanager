@@ -8,15 +8,10 @@ import (
 	"regexp"
 	"strings"
 
-	_ "embed"
-
 	"github.com/informaticon/dev.win.base.pbmanager/utils"
 	pborca "github.com/informaticon/lib.go.base.pborca"
 	"github.com/informaticon/lib.go.base.pborca/orca"
 )
-
-//go:embed pb_files/a3_lohn.pbw
-var pbwA3Lohn []byte
 
 func FixRegistry(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
 	pblFile := filepath.Join(libFolder, "inf1.pbl")
@@ -253,5 +248,5 @@ func FixProjLib(pbtFilePath, projName, oldLib, newLib string) error {
 
 // ReplacePayrollPbwFile replaces the pbwFile (to get rid of other targets)
 func ReplacePayrollPbwFile(pbwFilePath string) error {
-	return os.WriteFile(pbwFilePath, pbwA3Lohn, 0664)
+	return os.WriteFile(pbwFilePath, getPbFile("a3_lohn.pbw"), 0664)
 }

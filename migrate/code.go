@@ -134,6 +134,37 @@ func FixPayrollXmlDecl(libFolder string, targetName string, orca *pborca.Orca, w
 	return nil
 }
 
+// FixPayrollXmlDecl removes deprecated use of pbdom_processinginstruction
+func FixPayrollXmlEncoding(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
+	pbtFile := filepath.Join(libFolder, targetName+".pbt")
+	pblFile := filepath.Join(libFolder, "loh1.pbl")
+	objName := "loh1_u_loh_xml_pbdom"
+	src, err := orca.GetObjSource(pblFile, objName)
+	if err != nil {
+		warnFunc(fmt.Sprintf("skipping %s migration (does not exist in %s)", objName, pblFile))
+		return nil
+	}
+	if strings.Contains(src, `if lpd_obj[1].getobjectclassstring() <> "pbdom_processinginstruction" then`) {
+		warnFunc(fmt.Sprintf("skipping %s migration (already done)", objName))
+		return nil
+	}
+	src = strings.ReplaceAll(src, `apd_doc.GetContent(lpd_obj)`,
+		`apd_doc.GetContent(lpd_obj)
+
+if upperbound(lpd_obj) >= 1 then
+	if lpd_obj[1].getobjectclassstring() <> "pbdom_processinginstruction" then
+		// write XML Declaration manually as first line
+		FileWriteEx(ii_filenum, '<?xml version="1.0" encoding="UTF-8"?>')
+	end if
+end if
+`)
+	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	if err != nil {
+		return fmt.Errorf("FixPayrollXmlEncoding failed on %s: %v", objName, err)
+	}
+	return nil
+}
+
 //go:embed mirror_objects/*.sr*
 var mirrorFiles embed.FS
 

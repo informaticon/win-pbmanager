@@ -8,15 +8,10 @@ import (
 	"regexp"
 	"strings"
 
-	_ "embed"
-
 	"github.com/informaticon/dev.win.base.pbmanager/utils"
 	pborca "github.com/informaticon/lib.go.base.pborca"
 	"github.com/informaticon/lib.go.base.pborca/orca"
 )
-
-//go:embed pb_files/a3_lohn.pbw
-var pbwA3Lohn []byte
 
 func FixRegistry(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
 	pblFile := filepath.Join(libFolder, "inf1.pbl")
@@ -134,6 +129,37 @@ func FixPayrollXmlDecl(libFolder string, targetName string, orca *pborca.Orca, w
 	return nil
 }
 
+// FixPayrollXmlDecl removes deprecated use of pbdom_processinginstruction
+func FixPayrollXmlEncoding(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
+	pbtFile := filepath.Join(libFolder, targetName+".pbt")
+	pblFile := filepath.Join(libFolder, "loh1.pbl")
+	objName := "loh1_u_loh_xml_pbdom"
+	src, err := orca.GetObjSource(pblFile, objName)
+	if err != nil {
+		warnFunc(fmt.Sprintf("skipping %s migration (does not exist in %s)", objName, pblFile))
+		return nil
+	}
+	if strings.Contains(src, `if lpd_obj[1].getobjectclassstring() <> "pbdom_processinginstruction" then`) {
+		warnFunc(fmt.Sprintf("skipping %s migration (already done)", objName))
+		return nil
+	}
+	src = strings.ReplaceAll(src, `apd_doc.GetContent(lpd_obj)`,
+		`apd_doc.GetContent(lpd_obj)
+
+if upperbound(lpd_obj) >= 1 then
+	if lpd_obj[1].getobjectclassstring() <> "pbdom_processinginstruction" then
+		// write XML Declaration manually as first line
+		FileWriteEx(ii_filenum, '<?xml version="1.0" encoding="UTF-8"?>')
+	end if
+end if
+`)
+	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	if err != nil {
+		return fmt.Errorf("FixPayrollXmlEncoding failed on %s: %v", objName, err)
+	}
+	return nil
+}
+
 //go:embed mirror_objects/*.sr*
 var mirrorFiles embed.FS
 
@@ -222,5 +248,5 @@ func FixProjLib(pbtFilePath, projName, oldLib, newLib string) error {
 
 // ReplacePayrollPbwFile replaces the pbwFile (to get rid of other targets)
 func ReplacePayrollPbwFile(pbwFilePath string) error {
-	return os.WriteFile(pbwFilePath, pbwA3Lohn, 0664)
+	return os.WriteFile(pbwFilePath, getPbFile("a3_lohn.pbw"), 0664)
 }

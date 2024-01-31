@@ -13,6 +13,7 @@ import (
 	"github.com/informaticon/dev.win.base.pbmanager/utils"
 	pborca "github.com/informaticon/lib.go.base.pborca"
 	"github.com/informaticon/lib.go.base.pborca/orca"
+	"github.com/informaticon/lib.go.base.pborca/pbc"
 	"github.com/spf13/cobra"
 )
 
@@ -46,6 +47,12 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 
 		err = doUpgrade(pbtData, orcaVars.pbVersion, opts...)
 		if err != nil {
+			// Try to get better error messages with PBC
+			compiler, err2 := pbc.NewPBCompiler(pbtFilePath, pbc.Pb22)
+			if err2 == nil {
+				log, _ := compiler.Run()
+				fmt.Println(log)
+			}
 			fmt.Println(err)
 			os.Exit(2)
 		}
@@ -59,19 +66,25 @@ func init() {
 }
 
 func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) error {
-	var libs3rd migrate.Libs3rd
-
-	err := libs3rd.AddMissingLibs(pbtData)
-	if err != nil {
-		return err
-	}
-	defer libs3rd.CleanupLibs()
-
 	orca, err := pborca.NewOrca(pbVersion, options...)
 	if err != nil {
 		return err
 	}
 	defer orca.Close()
+
+	err = migrate.InsertExfInPbt(pbtData, orca)
+	if err != nil {
+		return err
+	}
+
+	var libs3rd migrate.Libs3rd
+
+	err = libs3rd.AddMissingLibs(pbtData)
+	if err != nil {
+		return err
+	}
+	defer libs3rd.CleanupLibs()
+
 	err = preMigrateFromPb115(pbtData, orca, printWarn)
 	if err != nil {
 		return err

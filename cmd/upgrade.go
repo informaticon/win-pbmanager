@@ -47,12 +47,6 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 
 		err = doUpgrade(pbtData, orcaVars.pbVersion, opts...)
 		if err != nil {
-			// Try to get better error messages with PBC
-			compiler, err2 := pbc.NewPBCompiler(args[0], pbc.Pb22)
-			if err2 == nil {
-				log, _ := compiler.Run()
-				fmt.Println(log)
-			}
 			fmt.Println(err)
 			os.Exit(2)
 		}
@@ -65,6 +59,21 @@ func init() {
 	rootCmd.AddCommand(upgradeCmd)
 }
 
+// buildWithPbc uses pbc.exe to build the project.
+// This gives better error messages than orca.
+func buildWithPbc(pbtPath string) string {
+	compiler, err := pbc.NewPBCompiler(
+		pbtPath, pbc.Pb22, pbc.WithCompileMethod(pbc.CompileMethodCompile),
+	)
+	if err != nil {
+		return err.Error()
+	}
+	log, err := compiler.Run()
+	if err != nil {
+		return fmt.Sprintf("%s\n%v", log, err)
+	}
+	return log
+}
 func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) error {
 	orca, err := pborca.NewOrca(pbVersion, options...)
 	if err != nil {
@@ -87,6 +96,7 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 
 	err = preMigrateFromPb115(pbtData, orca, printWarn)
 	if err != nil {
+		fmt.Println(buildWithPbc(pbtData.GetPath()))
 		return err
 	}
 
@@ -102,6 +112,7 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 
 	err = migrateStepC(pbtData, orca)
 	if err != nil {
+		fmt.Println(buildWithPbc(pbtData.GetPath()))
 		return err
 	}
 	fmt.Println("Step C done")

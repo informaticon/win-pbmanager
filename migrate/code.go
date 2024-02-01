@@ -185,6 +185,8 @@ func AddMirrorObjects(libFolder string, targetName string, orca *pborca.Orca, wa
 	return nil
 }
 
+// ChangePbdomBuildOptions adds pbdom to the build projects` build list.
+// It also removes the old bbdom from the list
 func ChangePbdomBuildOptions(projLibName string, projName string, pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)) error {
 
 	pblFile := filepath.Join(pbtData.BasePath, projLibName)
@@ -197,7 +199,7 @@ func ChangePbdomBuildOptions(projLibName string, projName string, pbtData *orca.
 		return nil
 	}
 
-	regex := regexp.MustCompile(`(?im)(PBD:pbdom170\.pbl,,[01])`)
+	regex := regexp.MustCompile(`(?im)(PBD:pbdom[0-9]+\.pbl,,[01])`)
 	src = regex.ReplaceAllString(src, `PBD:pbdom.pbl,,1`)
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil {

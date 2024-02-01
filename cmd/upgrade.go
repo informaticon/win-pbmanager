@@ -70,9 +70,9 @@ func buildWithPbc(pbtPath string) string {
 	}
 	log, err := compiler.Run()
 	if err != nil {
-		return fmt.Sprintf("%s\n%v", log, err)
+		return fmt.Sprintf("Build with pbc220.exe failed, compiler log:\n%s", log)
 	}
-	return log
+	return fmt.Sprintf("Build with pbc220.exe was successfull, compiler log:\n%s", log)
 }
 func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) error {
 	orca, err := pborca.NewOrca(pbVersion, options...)

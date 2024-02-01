@@ -48,7 +48,7 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 		err = doUpgrade(pbtData, orcaVars.pbVersion, opts...)
 		if err != nil {
 			// Try to get better error messages with PBC
-			compiler, err2 := pbc.NewPBCompiler(pbtFilePath, pbc.Pb22)
+			compiler, err2 := pbc.NewPBCompiler(args[0], pbc.Pb22)
 			if err2 == nil {
 				log, _ := compiler.Run()
 				fmt.Println(log)

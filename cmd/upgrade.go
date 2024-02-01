@@ -94,6 +94,20 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 	}
 	defer libs3rd.CleanupLibs()
 
+	for i, proj := range pbtData.Projects {
+		if proj.Name == "a3" && proj.PblFile == "inf2.pbl" {
+			_, err := orca.GetObjSource(filepath.Join(pbtData.BasePath, proj.PblFile), "a3.srj")
+			if err == nil {
+				continue
+			}
+			err = migrate.FixProjLib(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"), proj.Name, "inf2.pbl", "inf1.pbl")
+			if err != nil {
+				return err
+			}
+			pbtData.Projects[i].PblFile = "inf1.pbl"
+		}
+	}
+
 	err = preMigrateFromPb115(pbtData, orca, printWarn)
 	if err != nil {
 		fmt.Println(buildWithPbc(pbtData.GetPath()))
@@ -152,21 +166,6 @@ func migrateStepC(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 }
 
 func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
-	for i, proj := range pbtData.Projects {
-		if proj.Name == "a3" && proj.PblFile == "inf2.pbl" {
-			_, err := orca.GetObjSource(filepath.Join(pbtData.BasePath, proj.PblFile), "a3.srj")
-			if err == nil {
-				continue
-			}
-			err = migrate.FixProjLib(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"), proj.Name, "inf2.pbl", "inf1.pbl")
-			if err != nil {
-				return err
-			}
-			pbtData.Projects[i].PblFile = "inf1.pbl"
-
-		}
-	}
-
 	if pbtData.AppName == "a3" {
 		// lohn has no registry object
 		err = migrate.FixRegistry(pbtData.BasePath, pbtData.AppName, orca, printWarn)

@@ -204,6 +204,10 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 		if err != nil {
 			return
 		}
+		err = migrate.FixPayrollXmlEncoding(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+		if err != nil {
+			return
+		}
 	}
 
 	err = migrate.FixPbInit(pbtData.BasePath, printWarn)
@@ -226,6 +230,7 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 }
 
 // preMigrateFromPb115 does some steps which are needed to migrate from PB115
+// the steps are also made when upgrading pb170 projects, to be shure to fix them
 func preMigrateFromPb115(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)) (err error) {
 	pblFile := filepath.Join(pbtData.BasePath, "lif1.pbl")
 	pbtFile := filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt")
@@ -239,16 +244,18 @@ func preMigrateFromPb115(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(str
 			return
 		}
 	}
-	warnFunc("Start PB115 pre migration")
 
 	regex := regexp.MustCompile(`(?im)([ \t])(_INFO|_FATAL|_ERROR|_DEBUG|_WARN)`)
-	src = regex.ReplaceAllString(src, `${1}CI${2}`)
+	if !regex.MatchString(src) {
+		return
+	}
 
+	warnFunc("Start PB115 pre migration")
+	src = regex.ReplaceAllString(src, `${1}CI${2}`)
 	err = migrate.InsertNewPbdom(pbtData.BasePath, pbtData.AppName)
 	if err != nil {
 		return
 	}
-
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil {
 		fmt.Printf("info: SetObjSource for preMigration of PB115 failed, this can be ignored (%v)\n", err)

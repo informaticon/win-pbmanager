@@ -70,9 +70,9 @@ func buildWithPbc(pbtPath string) string {
 	}
 	log, err := compiler.Run()
 	if err != nil {
-		return fmt.Sprintf("%s\n%v", log, err)
+		return fmt.Sprintf("Build with pbc220.exe failed, compiler log:\n%s", log)
 	}
-	return log
+	return fmt.Sprintf("Build with pbc220.exe was successfull, compiler log:\n%s", log)
 }
 func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) error {
 	orca, err := pborca.NewOrca(pbVersion, options...)
@@ -93,6 +93,20 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 		return err
 	}
 	defer libs3rd.CleanupLibs()
+
+	for i, proj := range pbtData.Projects {
+		if proj.Name == "a3" && proj.PblFile == "inf2.pbl" {
+			_, err := orca.GetObjSource(filepath.Join(pbtData.BasePath, proj.PblFile), "a3.srj")
+			if err == nil {
+				continue
+			}
+			err = migrate.FixProjLib(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"), proj.Name, "inf2.pbl", "inf1.pbl")
+			if err != nil {
+				return err
+			}
+			pbtData.Projects[i].PblFile = "inf1.pbl"
+		}
+	}
 
 	err = preMigrateFromPb115(pbtData, orca, printWarn)
 	if err != nil {
@@ -152,21 +166,6 @@ func migrateStepC(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 }
 
 func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
-	for i, proj := range pbtData.Projects {
-		if proj.Name == "a3" && proj.PblFile == "inf2.pbl" {
-			_, err := orca.GetObjSource(filepath.Join(pbtData.BasePath, proj.PblFile), "a3.srj")
-			if err == nil {
-				continue
-			}
-			err = migrate.FixProjLib(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"), proj.Name, "inf2.pbl", "inf1.pbl")
-			if err != nil {
-				return err
-			}
-			pbtData.Projects[i].PblFile = "inf1.pbl"
-
-		}
-	}
-
 	if pbtData.AppName == "a3" {
 		// lohn has no registry object
 		err = migrate.FixRegistry(pbtData.BasePath, pbtData.AppName, orca, printWarn)
@@ -205,6 +204,10 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 		if err != nil {
 			return
 		}
+		err = migrate.FixPayrollXmlEncoding(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+		if err != nil {
+			return
+		}
 	}
 
 	err = migrate.FixPbInit(pbtData.BasePath, printWarn)
@@ -227,6 +230,7 @@ func migrateStepB(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 }
 
 // preMigrateFromPb115 does some steps which are needed to migrate from PB115
+// the steps are also made when upgrading pb170 projects, to be shure to fix them
 func preMigrateFromPb115(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)) (err error) {
 	pblFile := filepath.Join(pbtData.BasePath, "lif1.pbl")
 	pbtFile := filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt")
@@ -240,16 +244,18 @@ func preMigrateFromPb115(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(str
 			return
 		}
 	}
-	warnFunc("Start PB115 pre migration")
 
 	regex := regexp.MustCompile(`(?im)([ \t])(_INFO|_FATAL|_ERROR|_DEBUG|_WARN)`)
-	src = regex.ReplaceAllString(src, `${1}CI${2}`)
+	if !regex.MatchString(src) {
+		return
+	}
 
+	warnFunc("Start PB115 pre migration")
+	src = regex.ReplaceAllString(src, `${1}CI${2}`)
 	err = migrate.InsertNewPbdom(pbtData.BasePath, pbtData.AppName)
 	if err != nil {
 		return
 	}
-
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil {
 		fmt.Printf("info: SetObjSource for preMigration of PB115 failed, this can be ignored (%v)\n", err)

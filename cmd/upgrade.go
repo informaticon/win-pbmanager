@@ -92,7 +92,6 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 	if err != nil {
 		return err
 	}
-	defer libs3rd.CleanupLibs()
 
 	for i, proj := range pbtData.Projects {
 		if proj.Name == "a3" && proj.PblFile == "inf2.pbl" {
@@ -137,6 +136,9 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 	}
 
 	fmt.Println("Full Build done")
+	fmt.Println("Delete helper libs")
+	libs3rd.CleanupLibs()
+
 	return nil
 }
 

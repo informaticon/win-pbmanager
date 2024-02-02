@@ -34,7 +34,7 @@ func (l *Libs3rd) AddMissingLibs(pbtData *orca.Pbt) error {
 				fmt.Printf("  add missing pbl %s\n", filepath.Base(lib))
 				err = os.WriteFile(lib, getPbFile(file), 0664)
 			case "exf1.pbl", "grp1.pbl", "liq1.pbl",
-				"net1.pbl", "str1.pbl":
+				"net1.pbl", "str1.pbl", "sfi2.pbl":
 				err = os.WriteFile(lib, getPbFile(file), 0664)
 				fmt.Printf("  temporarly add missing pbl %s\n", filepath.Base(lib))
 				l.copiedFiles = append(l.copiedFiles, lib)

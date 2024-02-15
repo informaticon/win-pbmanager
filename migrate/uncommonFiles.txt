@@ -1,0 +1,8 @@
+; If one of these files (globs) exists, pbmanager shall print a waring
+
+pbdk/*.png
+pbdk/*.bmp
+pbdk/*.jpg
+pbdk/*.jpeg
+pbdk/*.xml
+pbdk/*.pdf

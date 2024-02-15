@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,30 +23,44 @@ var exportCmd = &cobra.Command{
 With --output-dir, you can specify the path where the object(s) are exportet to.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		objFilePath := args[0]
+		pbxFilePath := args[0]
 		objName, _ := cmd.Flags().GetString("object-name")
-		outputDirectory, _ := cmd.Flags().GetString("output-dir")
-		createSubDir, _ := cmd.Flags().GetBool("create-subdir")
-		fileType := filepath.Ext(objFilePath)
+		exportOutputDir, _ := cmd.Flags().GetString("output-dir")
+		fileType := filepath.Ext(pbxFilePath)
+
+		// check/create obj regex
+		if objName == "*" || objName == "" {
+			objName = "^.*$"
+		}
+		if !strings.HasSuffix(objName, "$") {
+			objName += "$"
+		}
+		if !strings.HasPrefix(objName, "^") {
+			objName = "^" + objName
+		}
+		objRegex, err := regexp.Compile(objName)
+		if err != nil {
+			return err
+		}
 
 		//check if user passed the create-subdir flag as it has no effect when exporting .pbt files
 		if cmd.Flags().Lookup("create-subdir").Changed && fileType == ".pbt" {
 			fmt.Println("--create-subdir has no effect when exporting .pbt")
 		}
 
-		if !filepath.IsAbs(objFilePath) {
-			objFilePath = filepath.Join(basePath, objFilePath)
+		if !filepath.IsAbs(pbxFilePath) {
+			pbxFilePath = filepath.Join(basePath, pbxFilePath)
 		}
 		//check if provided objFilePath exists and is allowed
-		if !utils.FileExists(objFilePath) || (fileType != ".pbl" && fileType != ".pbt") {
-			return fmt.Errorf("file %s does not exist or is not a pbl/pbt file", objFilePath)
+		if !utils.FileExists(pbxFilePath) || (fileType != ".pbl" && fileType != ".pbt") {
+			return fmt.Errorf("file %s does not exist or is not a pbl/pbt file", pbxFilePath)
 		}
 
 		//if no output directory is provided, store the export along side the objFilePath in the src folder
-		if outputDirectory == "" {
-			outputDirectory = filepath.Join(filepath.Dir(objFilePath), "src")
+		if exportOutputDir == "" {
+			exportOutputDir = filepath.Join(filepath.Dir(pbxFilePath), "src")
 		}
-		err := os.MkdirAll(outputDirectory, os.ModeDir)
+		err = os.MkdirAll(exportOutputDir, os.ModeDir)
 		if err != nil {
 			return err
 		}
@@ -63,37 +79,14 @@ With --output-dir, you can specify the path where the object(s) are exportet to.
 		}
 
 		if fileType == ".pbt" {
-			err = exportPbt(Orca, objFilePath, outputDirectory)
+			err = exportPbt(Orca, pbxFilePath, objRegex, exportOutputDir)
 			if err != nil {
 				return err
 			}
 		} else {
-			if objName == "*" {
-				err = exportPbl(Orca, objFilePath, outputDirectory, createSubDir)
-				if err != nil {
-					return err
-				}
-
-			} else {
-				if createSubDir {
-					outputDirectory = filepath.Join(outputDirectory, filepath.Base(objFilePath))
-					err := os.MkdirAll(outputDirectory, os.ModeDir)
-					if err != nil {
-						return err
-					}
-				}
-				srcData, err := Orca.GetObjSource(objFilePath, objName)
-				if err != nil {
-					return err
-				}
-				fileName, err := Orca.GetFilenameOfSrc(srcData)
-				if err != nil {
-					return err
-				}
-				err = os.WriteFile(filepath.Join(outputDirectory, fileName), []byte(srcData), 0664)
-				if err != nil {
-					return err
-				}
+			err = exportPbl(Orca, pbxFilePath, objRegex, exportOutputDir)
+			if err != nil {
+				return err
 			}
 		}
 
@@ -102,28 +95,33 @@ With --output-dir, you can specify the path where the object(s) are exportet to.
 	},
 }
 
+var exportCreateSupdir bool
+
 func init() {
 	rootCmd.AddCommand(exportCmd)
-	exportCmd.PersistentFlags().StringP("object-name", "n", "*", "name of object to export like inf1_u_application")
+	exportCmd.PersistentFlags().StringP("object-name", "n", "*", "name of object to export like inf1_u_application.sru")
 	exportCmd.PersistentFlags().StringP("output-dir", "o", "", "path to output directory (default is <pbl/pbt path>/src")
-	exportCmd.PersistentFlags().BoolP("create-subdir", "s", false, "create a subfolder with the library name to export the source file(s) into")
+	exportCmd.PersistentFlags().BoolVarP(&exportCreateSupdir, "create-subdir", "s", true, "create a subfolder with the library name to export the source file(s) into")
 }
 
-func exportPbl(Orca *pborca.Orca, pblFilePath string, outputDirectory string, createSubDir bool) error {
-	if createSubDir {
+func exportPbl(Orca *pborca.Orca, pblFilePath string, objRegex *regexp.Regexp, outputDirectory string) error {
+	if exportCreateSupdir {
 		outputDirectory = filepath.Join(outputDirectory, filepath.Base(pblFilePath))
-		err := os.MkdirAll(outputDirectory, os.ModeDir)
-		if err != nil {
-			return err
-		}
 	}
+
 	objs, err := Orca.GetObjList(pblFilePath)
 	if err != nil {
 		return err
 	}
+
+	var dirCreated = false
 	for _, objArr := range objs {
 		for _, obj := range objArr.GetObjArr() {
-			srcData, err := Orca.GetObjSource(pblFilePath, obj.GetName()+pborca.GetObjSuffixFromType(obj.GetObjType()))
+			objName := obj.GetName() + pborca.GetObjSuffixFromType(obj.GetObjType())
+			if objRegex.FindString(objName) == "" {
+				continue
+			}
+			srcData, err := Orca.GetObjSource(pblFilePath, objName)
 			if err != nil {
 				return err
 			}
@@ -131,16 +129,25 @@ func exportPbl(Orca *pborca.Orca, pblFilePath string, outputDirectory string, cr
 			if err != nil {
 				return err
 			}
+			if !dirCreated {
+				fmt.Printf("Exporting library %s\n", filepath.Base(filepath.Base(pblFilePath)))
+				err := os.MkdirAll(outputDirectory, os.ModeDir)
+				if err != nil {
+					return err
+				}
+				dirCreated = true
+			}
 			err = os.WriteFile(filepath.Join(outputDirectory, fileName), []byte(srcData), 0664)
 			if err != nil {
 				return err
 			}
 		}
 	}
+
 	return nil
 }
 
-func exportPbt(Orca *pborca.Orca, pbtFilePath string, outputDirectory string) error {
+func exportPbt(Orca *pborca.Orca, pbtFilePath string, objRegex *regexp.Regexp, outputDirectory string) error {
 	pbt, err := orca.NewPbtFromFile(pbtFilePath)
 	if err != nil {
 		return err
@@ -150,15 +157,7 @@ func exportPbt(Orca *pborca.Orca, pbtFilePath string, outputDirectory string) er
 			fmt.Printf("Library %s does not exist, skipping.....\n", lib)
 			continue
 		}
-		libName := filepath.Base(lib)
-
-		pblOutputDirectory := filepath.Join(outputDirectory, libName)
-		err := os.MkdirAll(pblOutputDirectory, os.ModeDir)
-		if err != nil {
-			return err
-		}
-		fmt.Println("Exporting library ", libName)
-		err = exportPbl(Orca, lib, pblOutputDirectory, false)
+		err = exportPbl(Orca, lib, objRegex, outputDirectory)
 		if err != nil {
 			return err
 		}
@@ -167,16 +166,16 @@ func exportPbt(Orca *pborca.Orca, pbtFilePath string, outputDirectory string) er
 	return nil
 }
 
-func exportPbtWg(Orca *pborca.Orca, pbtFilePath string, outputDirectory string, wg *sync.WaitGroup) error {
+func exportPbtWg(Orca *pborca.Orca, pbtFilePath string, objRegex *regexp.Regexp, outputDirectory string, wg *sync.WaitGroup) error {
 	defer wg.Done()
-	err := exportPbt(Orca, pbtFilePath, outputDirectory)
+	err := exportPbt(Orca, pbtFilePath, objRegex, outputDirectory)
 	//wg.Wait()
 	return err
 }
 
-func exportPblWg(Orca *pborca.Orca, pblFilePath string, outputDirectory string, createSubDir bool, wg *sync.WaitGroup) error {
+func exportPblWg(Orca *pborca.Orca, pblFilePath string, objRegex *regexp.Regexp, outputDirectory string, wg *sync.WaitGroup) error {
 	defer wg.Done()
-	err := exportPbl(Orca, pblFilePath, outputDirectory, createSubDir)
+	err := exportPbl(Orca, pblFilePath, objRegex, outputDirectory)
 	//wg.Wait()
 	return err
 }

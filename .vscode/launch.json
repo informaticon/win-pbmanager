@@ -84,6 +84,5 @@
             "program": "${workspaceFolder}",
             "args": ["export", "C:\\a3\\erp.win.base.main\\lib\\lda1.pbl","--object-name", "w_lda_dis_import_reset", "--output-dir", "C:\\a3\\erp.win.base.main\\lib\\src", "--create-subdir=true"]
         }
-        
     ]
 }

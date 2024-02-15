@@ -168,7 +168,7 @@ func diff(Orca *pborca.Orca, objFilePathBase, objFilePathMine string) error {
 
 			for job := range c {
 				fmt.Println("Exporting ", job.libraryPath, " to ", job.destinationPath)
-				err := exportPbl(Orca, job.libraryPath, job.destinationPath, true)
+				err := exportPbl(Orca, job.libraryPath, regexp.MustCompile("^.*$"), job.destinationPath)
 				if err != nil {
 					fmt.Println(err)
 				}
@@ -196,19 +196,19 @@ func merge(Orca *pborca.Orca, pblFilePathBase, pblFilePathMine, pblFilePathTheir
 
 	pblSrcPathBase := filepath.Join(tempDir, fmt.Sprintf("%s (%s)", filepath.Base(pblFilePathBase), getPblFileDescr(pblFilePathBase)))
 	os.MkdirAll(pblSrcPathBase, 0664)
-	err := exportPbl(Orca, pblFilePathBase, pblSrcPathBase, true)
+	err := exportPbl(Orca, pblFilePathBase, regexp.MustCompile("^.*$"), pblSrcPathBase)
 	if err != nil {
 		return err
 	}
 	pblSrcPathMine := filepath.Join(tempDir, fmt.Sprintf("%s (%s)", filepath.Base(pblFilePathMine), getPblFileDescr(pblFilePathMine)))
 	os.MkdirAll(pblSrcPathMine, 0664)
-	err = exportPbl(Orca, pblFilePathMine, pblSrcPathMine, true)
+	err = exportPbl(Orca, pblFilePathMine, regexp.MustCompile("^.*$"), pblSrcPathMine)
 	if err != nil {
 		return err
 	}
 	pblSrcPathTheirs := filepath.Join(tempDir, fmt.Sprintf("%s (%s)", filepath.Base(pblFilePathTheirs), getPblFileDescr(pblFilePathTheirs)))
 	os.MkdirAll(pblSrcPathTheirs, 0664)
-	err = exportPbl(Orca, pblFilePathTheirs, pblSrcPathTheirs, true)
+	err = exportPbl(Orca, pblFilePathTheirs, regexp.MustCompile("^.*$"), pblSrcPathTheirs)
 	if err != nil {
 		return err
 	}

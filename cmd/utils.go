@@ -38,26 +38,27 @@ func findPbtFilePath(basePath string, pbtFilePath string) (string, error) {
 	return pbtFilePath, nil
 }
 
-func isPblFile(path string) bool {
+func isPblPbtFile(path string) bool {
+
 	if !utils.FileExists(path) {
 		return false
 	}
 	// file is xxx.pbl or xxx.pbl.r123456
-	if filepath.Ext(path) == ".pbl" {
+	if filepath.Ext(path) == ".pbl" || filepath.Ext(path) == ".pbt" {
 		return true
 	}
 	cs := strings.Split(filepath.Base(path), ".")
 	if len(cs) >= 3 {
-		return cs[len(cs)-2] == "pbl" && cs[len(cs)-1][:1] == "r"
+		return (cs[len(cs)-2] == "pbl" || cs[len(cs)-2] == "pbt") && cs[len(cs)-1][:1] == "r"
 	}
 	return false
 }
-func getCleanPblFilePath(basePath, path string) (string, error) {
+func getCleanPblPbtFilePath(basePath, path string) (string, error) {
 	path = filepath.Clean(path)
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(basePath, path)
 	}
-	if !isPblFile(path) {
+	if !isPblPbtFile(path) {
 		return "", fmt.Errorf("file %s does not exist or is not a pbl file", path)
 	}
 	return path, nil

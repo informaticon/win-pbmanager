@@ -225,6 +225,11 @@ func applyPostPatches(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 		return
 	}
 
+	err = migrate.FixHttpClient(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+	if err != nil {
+		return
+	}
+
 	err = migrate.AddMirrorObjects(pbtData.BasePath, pbtData.AppName, orca, printWarn)
 	if err != nil {
 		return

@@ -42,6 +42,59 @@ func FixRegistry(libFolder string, targetName string, orca *pborca.Orca, warnFun
 	return nil
 }
 
+func FixHttpClient(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
+	pbtFile := filepath.Join(libFolder, targetName+".pbt")
+
+	// part 1: fin1_u_fin_bankenstamm
+	step1 := func() error {
+		pblFile := filepath.Join(libFolder, "fin1.pbl")
+		objName := "fin1_u_fin_bankenstamm"
+		regex := regexp.MustCompile(`(?mi)(lu_client = create httpclient)(\n[ \t]+)(li_ret)`)
+		src, err := orca.GetObjSource(pblFile, objName)
+		if err != nil {
+			warnFunc(fmt.Sprintf("skipping %s migration, file %s doesn't contain %s", objName, pblFile, objName))
+			return nil
+		}
+
+		src = regex.ReplaceAllString(src, `${1}${2}lu_client.anonymousaccess = true${2}${3}`)
+
+		err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+		if err != nil {
+			return fmt.Errorf("FixHttpClient failed for %s: %v", objName, err)
+		}
+		return nil
+	}
+	err := step1()
+	if err != nil {
+		return err
+	}
+
+	// part 2: inf1_u_httpclient
+	step2 := func() error {
+		pblFile := filepath.Join(libFolder, "inf1.pbl")
+		objName := "inf1_u_httpclient"
+		regex := regexp.MustCompile(`(?mi)global type inf1_u_httpclient from httpclient[\r\n \t]+boolean anonymousaccess = true`)
+		src, err := orca.GetObjSource(pblFile, objName)
+		if err != nil {
+			warnFunc(fmt.Sprintf("skipping %s migration, file %s doesn't contain %s", objName, pblFile, objName))
+			return nil
+		}
+		if len(regex.FindAllStringSubmatch(src, -1)) >= 1 {
+			warnFunc(fmt.Sprintf("skipping %s migration, already migrated", objName))
+			return nil
+		}
+
+		regex = regexp.MustCompile(`(?mi)(global type inf1_u_httpclient from httpclient)`)
+		src = regex.ReplaceAllString(src, `${1}\r\nboolean anonymousaccess = true`)
+		err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+		if err != nil {
+			return fmt.Errorf("FixHttpClient failed for %s: %v", objName, err)
+		}
+		return nil
+	}
+	return step2()
+}
+
 func FixLifProcess(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
 	pblFile := filepath.Join(libFolder, "lif1.pbl")
 	pbtFile := filepath.Join(libFolder, targetName+".pbt")

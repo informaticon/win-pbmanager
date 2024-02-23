@@ -225,9 +225,22 @@ func applyPostPatches(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 		return
 	}
 
+	err = migrate.FixHttpClient(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+	if err != nil {
+		return
+	}
+
 	err = migrate.AddMirrorObjects(pbtData.BasePath, pbtData.AppName, orca, printWarn)
 	if err != nil {
 		return
+	}
+
+	uncommonFiles, err := migrate.CheckForUncommonFiles(pbtData.BasePath)
+	if err != nil {
+		return
+	}
+	if len(uncommonFiles) > 0 {
+		printWarn(fmt.Sprintf("uncommon files were found: %s", uncommonFiles))
 	}
 
 	err = migrate.RemoveFiles(pbtData.BasePath, printWarn)
@@ -271,5 +284,5 @@ func applyPostPatches(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 }
 
 func printWarn(message string) {
-	fmt.Println(message)
+	fmt.Println("WARN: ", message)
 }

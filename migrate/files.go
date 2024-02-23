@@ -19,6 +19,9 @@ import (
 //go:embed oldFiles.txt
 var oldFiles string
 
+//go:embed uncommonFiles.txt
+var uncommonFiles string
+
 var urlPbdk = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdk@22.2.0-3289.zip"
 var urlPbdom = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdom@22.2.0-3289.pbl"
 
@@ -40,11 +43,34 @@ func RemoveFiles(folder string, warnFunc func(string)) error {
 			return fmt.Errorf("RemoveFiles failed: %v", err)
 		}
 	}
+
 	err := utils.RemoveGlob(fmt.Sprintf("%s/*.*", filepath.Join(folder, "pbdk")))
 	if err != nil {
 		return fmt.Errorf("RemoveFiles failed: %v", err)
 	}
 	return nil
+}
+
+// CheckForUncommonFiles returns a list of files which shouldn't be there.
+// It is needed, as some developers stored pictures in the pbdk folder (which gets deleted).
+func CheckForUncommonFiles(folder string) ([]string, error) {
+	var ret []string
+	lines := strings.Split(string(uncommonFiles), "\r\n")
+	for _, line := range lines {
+		if len(line) == 0 {
+			continue
+		}
+		if line[:1] == ";" {
+			continue
+		}
+
+		found, err := filepath.Glob(folder + "/" + line)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, found...)
+	}
+	return ret, nil
 }
 
 func FixPbInit(folder string, warnFunc func(string)) error {

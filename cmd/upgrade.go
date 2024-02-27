@@ -45,10 +45,18 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 			return err
 		}
 
-		err = doUpgrade(pbtData, orcaVars.pbVersion, opts...)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(2)
+		if yes, _ := cmd.Flags().GetBool("only-patches"); yes {
+			err = doPatch(pbtData, orcaVars.pbVersion, opts...)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(2)
+			}
+		} else {
+			err = doUpgrade(pbtData, orcaVars.pbVersion, opts...)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(2)
+			}
 		}
 		return nil
 	},
@@ -56,6 +64,7 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 
 func init() {
 	utils.GetRessource("https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdk@22.2.0-3289.zip")
+	upgradeCmd.Flags().Bool("only-patches", false, "only apply patches, without building/migration")
 	rootCmd.AddCommand(upgradeCmd)
 }
 
@@ -74,6 +83,56 @@ func buildWithPbc(pbtPath string) string {
 	}
 	return fmt.Sprintf("Build with pbc220.exe was successfull, compiler log:\n%s", log)
 }
+
+func doPatch(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) error {
+	orca, err := pborca.NewOrca(pbVersion, options...)
+	if err != nil {
+		return err
+	}
+	defer orca.Close()
+
+	err = migrate.InsertExfInPbt(pbtData, orca)
+	if err != nil {
+		return err
+	}
+
+	var libs3rd migrate.Libs3rd
+
+	err = libs3rd.AddMissingLibs(pbtData)
+	if err != nil {
+		return err
+	}
+
+	for i, proj := range pbtData.Projects {
+		if proj.Name == "a3" && proj.PblFile == "inf2.pbl" {
+			_, err := orca.GetObjSource(filepath.Join(pbtData.BasePath, proj.PblFile), "a3.srj")
+			if err == nil {
+				continue
+			}
+			err = migrate.FixProjLib(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"), proj.Name, "inf2.pbl", "inf1.pbl")
+			if err != nil {
+				return err
+			}
+			pbtData.Projects[i].PblFile = "inf1.pbl"
+		}
+	}
+
+	if pbtData.AppName == "a3" || pbtData.AppName == "loh" {
+		err = applyPostPatches(pbtData, orca)
+		if err != nil {
+			return err
+		}
+		fmt.Println("Applying patches done")
+	} else {
+		fmt.Println("Skipping applying patches (not an a3/lohn project) ")
+	}
+
+	libs3rd.CleanupLibs()
+	fmt.Println("Deleting helper libs done")
+
+	return nil
+}
+
 func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) error {
 	orca, err := pborca.NewOrca(pbVersion, options...)
 	if err != nil {
@@ -166,6 +225,7 @@ func migrateToPb220(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	}
 	return nil
 }
+
 func applyPrePatches(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)) (err error) {
 	err = migrate.InsertNewPbdom(pbtData.BasePath, pbtData.AppName)
 	if err != nil {

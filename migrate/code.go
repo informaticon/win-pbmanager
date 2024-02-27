@@ -49,7 +49,7 @@ func FixHttpClient(libFolder string, targetName string, orca *pborca.Orca, warnF
 	step1 := func() error {
 		pblFile := filepath.Join(libFolder, "fin1.pbl")
 		objName := "fin1_u_fin_bankenstamm"
-		regex := regexp.MustCompile(`(?mi)(lu_client = create httpclient)(\n[ \t]+)(li_ret)`)
+		regex := regexp.MustCompile(`(?mi)(lu_client = create httpclient)([\r\n \t]+)(li_ret)`)
 		src, err := orca.GetObjSource(pblFile, objName)
 		if err != nil {
 			warnFunc(fmt.Sprintf("skipping %s migration, file %s doesn't contain %s", objName, pblFile, objName))
@@ -84,7 +84,7 @@ func FixHttpClient(libFolder string, targetName string, orca *pborca.Orca, warnF
 			return nil
 		}
 
-		regex = regexp.MustCompile(`(?mi)(global type inf1_u_httpclient from httpclient)`)
+		regex = regexp.MustCompile(`(?mi)(end forward[\r\n\t ]+global type inf1_u_httpclient from httpclient[ \t]+)`)
 		src = regex.ReplaceAllString(src, `${1}\r\nboolean anonymousaccess = true`)
 		err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 		if err != nil {

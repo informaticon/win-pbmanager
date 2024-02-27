@@ -129,7 +129,7 @@ func diff(Orca *pborca.Orca, objFilePathBase, objFilePathMine string) error {
 			close(c)
 		}()
 	} else if filepath.Ext(objFilePathBase) == ".pbl" {
-		//producer for pbt
+		//producer for pbl
 		go func() {
 
 			var job exportJob

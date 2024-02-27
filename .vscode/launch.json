@@ -11,8 +11,8 @@
             "mode": "auto",
             "program": "${workspaceFolder}",
             "args": ["upgrade", "C:/a3/erp.win.bgy.main_pb2022r3/lib",
-            "--orca-server", "192.168.57.11:8081",
-            "--orca-apikey", "ABCD1234ABCD1234ABCD1234ABCD1234"]
+            "--orca-server", "127.0.0.1:62210",
+            "--orca-apikey", "1yX2QNqcUuvelVjrW3bDJ2zbFvqOh8uG"]
         },{
             "name": "Diff pbt",
             "type": "go",
@@ -26,7 +26,8 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
-            "args": ["diff", "C:\\a3\\erp.win.base.main\\lib\\lda1.pbl", "C:\\a3\\erp.win.base.main_2\\lib\\lda1.pbl"]
+            "args": ["diff", "C:\\a3\\erp.win.base.main\\lib\\adr1.pbl", "C:\\a3\\erp.win.nivell-ag-che.main\\lib\\adr1.pbl"
+            ]
         },{
             "name": "Upgrade Lohn",
             "type": "go",

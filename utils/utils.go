@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -103,4 +104,29 @@ func GetRessource(url string) (string, error) {
 
 	_, err = io.Copy(dstFile, resp.Body)
 	return dstFilePath, err
+}
+
+// GetCommonBaseDir returns the common ancestor (dir) of two paths.
+// For example with filePath1 set to /home/simon/abc and
+// filePath2 set to /home/localadmin, the function returns /home.
+// If filePath1 and 2 don't have a common ancestor, an empty string is returned.
+func GetCommonBaseDir(filePath1, filePath2 string) string {
+	components1 := strings.Split(filepath.Clean(filePath1), string(os.PathSeparator))
+	components2 := strings.Split(filepath.Clean(filePath2), string(os.PathSeparator))
+	var i int
+
+	for i = 0; i < len(components1) && i < len(components2); i++ {
+		if i == 0 {
+			// fix C:aaa issue
+			components1[0] += "/"
+			components2[0] += "/"
+		}
+		if components1[i] != components2[i] {
+			break
+		}
+	}
+	if i == 0 {
+		return ""
+	}
+	return filepath.Join(components1[:i]...)
 }

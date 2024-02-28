@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/informaticon/dev.win.base.pbmanager/utils"
 	pborca "github.com/informaticon/lib.go.base.pborca"
 	"github.com/informaticon/lib.go.base.pborca/orca"
 	"github.com/spf13/cobra"
@@ -68,14 +68,12 @@ var diffCmd = &cobra.Command{
 			return err
 		}
 		if len(args) == 2 {
-			err = diff(Orca, pblFilePathBase, pblFilePathMine)
+			err = diff(pblFilePathBase, pblFilePathMine)
 			if err != nil {
 				fmt.Println(err)
 			}
 			return nil
-		}
-
-		if len(args) > 2 {
+		} else {
 			pblFilePathTheirs, err := getCleanPblPbtFilePath(basePath, args[2])
 			if err != nil {
 				return err
@@ -88,17 +86,13 @@ var diffCmd = &cobra.Command{
 					return err
 				}
 			}
-			if true == false {
-				merge(Orca, pblFilePathBase, pblFilePathMine, pblFilePathTheirs, pblFilePathMerged)
-			}
 
-			return err
+			return merge(Orca, pblFilePathBase, pblFilePathMine, pblFilePathTheirs, pblFilePathMerged)
 		}
-		return nil
 	},
 }
 
-func diff(Orca *pborca.Orca, objFilePathBase, objFilePathMine string) error {
+func diff(objFilePathBase, objFilePathMine string) error {
 	tempDir := filepath.Join(os.TempDir(), "pbdiff", time.Now().Format("20060102_150405"))
 	os.MkdirAll(tempDir, 0664)
 	defer os.RemoveAll(tempDir)
@@ -178,95 +172,143 @@ func diff(Orca *pborca.Orca, objFilePathBase, objFilePathMine string) error {
 	}
 
 	wg1.Wait()
-	command := exec.Command(mergeTool, "/r", "/x", "/u", "/ignoreblanklines", objSrcPathMine, objSrcPathBase, "/dl", nameMine, "/dr", nameBase)
-	out, err := command.CombinedOutput()
+
+	var cmd *exec.Cmd
+
+	if filepath.Ext(objFilePathBase) == ".pbt" {
+		cmd = getDiffCommand(objSrcPathMine, objSrcPathBase, nameMine, nameBase)
+	} else if filepath.Ext(objFilePathBase) == ".pbl" {
+		cmd = getDiffCommand(
+			filepath.Join(objSrcPathMine, filepath.Base(objFilePathBase)),
+			filepath.Join(objSrcPathBase, filepath.Base(objFilePathBase)),
+			nameMine, nameBase,
+		)
+	}
+	out, err := cmd.CombinedOutput()
+	if len(out) > 0 {
+		fmt.Println(string(out))
+	}
 	if err != nil {
 		return err
-	}
-	if len(out) > 0 {
-		fmt.Println(out)
 	}
 	return nil
 }
 
 func merge(Orca *pborca.Orca, pblFilePathBase, pblFilePathMine, pblFilePathTheirs, pblFilePathMerged string) error {
-	tempDir := filepath.Join(os.TempDir(), "pbdiff", time.Now().Format("20170907_170606"))
-	os.MkdirAll(tempDir, 0664)
-	defer os.RemoveAll(tempDir)
+	return fmt.Errorf("merging is not yet implemented")
+	/*
+		tempDir := filepath.Join(os.TempDir(), "pbdiff", time.Now().Format("20170907_170606"))
+		os.MkdirAll(tempDir, 0664)
+		defer os.RemoveAll(tempDir)
 
-	pblSrcPathBase := filepath.Join(tempDir, fmt.Sprintf("%s (%s)", filepath.Base(pblFilePathBase), getPblFileDescr(pblFilePathBase)))
-	os.MkdirAll(pblSrcPathBase, 0664)
-	err := exportPbl(Orca, pblFilePathBase, regexp.MustCompile("^.*$"), pblSrcPathBase)
-	if err != nil {
-		return err
-	}
-	pblSrcPathMine := filepath.Join(tempDir, fmt.Sprintf("%s (%s)", filepath.Base(pblFilePathMine), getPblFileDescr(pblFilePathMine)))
-	os.MkdirAll(pblSrcPathMine, 0664)
-	err = exportPbl(Orca, pblFilePathMine, regexp.MustCompile("^.*$"), pblSrcPathMine)
-	if err != nil {
-		return err
-	}
-	pblSrcPathTheirs := filepath.Join(tempDir, fmt.Sprintf("%s (%s)", filepath.Base(pblFilePathTheirs), getPblFileDescr(pblFilePathTheirs)))
-	os.MkdirAll(pblSrcPathTheirs, 0664)
-	err = exportPbl(Orca, pblFilePathTheirs, regexp.MustCompile("^.*$"), pblSrcPathTheirs)
-	if err != nil {
-		return err
-	}
-	command := exec.Command(mergeTool, "/r", "/x", "/u", "/ignoreblanklines", "/dl", nameMine, "/dm", nameBase, "/dr", nameTheirs, pblSrcPathMine, pblSrcPathBase, pblSrcPathTheirs)
-
-	out, err := command.CombinedOutput()
-	if err != nil {
-		return err
-	}
-	if len(out) > 0 {
-		fmt.Println(out)
-	}
-
-	fmt.Println("Do you want to read back in the merge result? (The base file from the middle will be imported). [y/N]")
-	reader := bufio.NewReader(os.Stdin)
-	str, err := reader.ReadString('\n')
-	if err != nil {
-		return err
-	}
-	if !regexp.MustCompile(`(?i)(y|j)[\r\n]+`).MatchString(str) {
-		return nil
-	}
-	pbtFilePath, err := findPbtFilePath(filepath.Dir(pblFilePathBase), "")
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Starting import into %s with target %s\n", pblFilePathBase, pbtFilePath)
-	srcFiles, err := os.ReadDir(pblSrcPathBase)
-	if err != nil {
-		return err
-	}
-	var errs []error
-	for _, srcFile := range srcFiles {
-		objName := filepath.Base(srcFile.Name())
-		objName = strings.TrimSuffix(objName, filepath.Ext(objName))
-
-		srcData, err := os.ReadFile(filepath.Join(pblSrcPathBase, srcFile.Name()))
+		pblSrcPathBase := filepath.Join(tempDir, fmt.Sprintf("%s (%s)", filepath.Base(pblFilePathBase), getPblFileDescr(pblFilePathBase)))
+		os.MkdirAll(pblSrcPathBase, 0664)
+		err := exportPbl(Orca, pblFilePathBase, regexp.MustCompile("^.*$"), pblSrcPathBase)
 		if err != nil {
 			return err
 		}
-
-		err = Orca.SetObjSource(pbtFilePath, pblFilePathMine, objName, string(srcData))
-		if err == nil {
-			fmt.Printf("Successfully imported %s\n", objName)
-		} else {
-			fmt.Printf("Import of %s failed: %v\n", objName, err)
-			errs = append(errs, err)
+		pblSrcPathMine := filepath.Join(tempDir, fmt.Sprintf("%s (%s)", filepath.Base(pblFilePathMine), getPblFileDescr(pblFilePathMine)))
+		os.MkdirAll(pblSrcPathMine, 0664)
+		err = exportPbl(Orca, pblFilePathMine, regexp.MustCompile("^.*$"), pblSrcPathMine)
+		if err != nil {
+			return err
 		}
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("import finished with %d errors", len(errs))
-	}
-	fmt.Println("Import finished")
-	return nil
+		pblSrcPathTheirs := filepath.Join(tempDir, fmt.Sprintf("%s (%s)", filepath.Base(pblFilePathTheirs), getPblFileDescr(pblFilePathTheirs)))
+		os.MkdirAll(pblSrcPathTheirs, 0664)
+		err = exportPbl(Orca, pblFilePathTheirs, regexp.MustCompile("^.*$"), pblSrcPathTheirs)
+		if err != nil {
+			return err
+		}
+		command := exec.Command(mergeTool, "/r", "/x", "/u", "/ignoreblanklines", "/dl", nameMine, "/dm", nameBase, "/dr", nameTheirs, pblSrcPathMine, pblSrcPathBase, pblSrcPathTheirs)
+
+		out, err := command.CombinedOutput()
+		if err != nil {
+			return err
+		}
+		if len(out) > 0 {
+			fmt.Println(out)
+		}
+
+		fmt.Println("Do you want to read back in the merge result? (The base file from the middle will be imported). [y/N]")
+		reader := bufio.NewReader(os.Stdin)
+		str, err := reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		if !regexp.MustCompile(`(?i)(y|j)[\r\n]+`).MatchString(str) {
+			return nil
+		}
+		pbtFilePath, err := findPbtFilePath(filepath.Dir(pblFilePathBase), "")
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Starting import into %s with target %s\n", pblFilePathBase, pbtFilePath)
+		srcFiles, err := os.ReadDir(pblSrcPathBase)
+		if err != nil {
+			return err
+		}
+		var errs []error
+		for _, srcFile := range srcFiles {
+			objName := filepath.Base(srcFile.Name())
+			objName = strings.TrimSuffix(objName, filepath.Ext(objName))
+
+			srcData, err := os.ReadFile(filepath.Join(pblSrcPathBase, srcFile.Name()))
+			if err != nil {
+				return err
+			}
+
+			err = Orca.SetObjSource(pbtFilePath, pblFilePathMine, objName, string(srcData))
+			if err == nil {
+				fmt.Printf("Successfully imported %s\n", objName)
+			} else {
+				fmt.Printf("Import of %s failed: %v\n", objName, err)
+				errs = append(errs, err)
+			}
+		}
+		if len(errs) > 0 {
+			return fmt.Errorf("import finished with %d errors", len(errs))
+		}
+		fmt.Println("Import finished")
+		return nil
+	*/
 }
 
+// getDiffCommand returns a cmd to diff 2 folders.
+// nameMine and nameBase are only taken into account for WinMege.
+func getDiffCommand(objSrcPathMine, objSrcPathBase, nameMine, nameBase string) *exec.Cmd {
+	basePath := utils.GetCommonBaseDir(objSrcPathMine, objSrcPathBase)
+	objSrcRelPathBase, err := filepath.Rel(basePath, objSrcPathBase)
+	if err != nil {
+		objSrcRelPathBase = objSrcPathBase
+	}
+	objSrcRelPathMine, err := filepath.Rel(basePath, objSrcPathMine)
+	if err != nil {
+		objSrcRelPathMine = objSrcPathMine
+	}
+	tool := filepath.Base(mergeTool)
+	if tool == "WinMergeU.exe" {
+		cmd := exec.Command(mergeTool)
+		cmd.Dir = basePath
+		cmd.Args = append(cmd.Args, "/r", "/x", "/u", "/ignoreblanklines", objSrcRelPathMine, objSrcRelPathBase, "/dl", nameMine, "/dr", nameBase)
+		return cmd
+	} else if tool == "codium.exe" || tool == "codium" {
+		cmd := exec.Command("cmd.exe", "/C", `C:\Program Files\VSCodium\bin\codium.cmd`)
+		cmd.Env = append(cmd.Env, "COMPARE_FOLDERS=DIFF")
+		/*cmd.Env = append(cmd.Env,
+			"COMPARE_FOLDERS=DIFF",
+			"VSCODE_DEV=",
+			"ELECTRON_RUN_AS_NODE=1",
+		)
+		cmd.Args = append(cmd.Args, filepath.Join(filepath.Dir(mergeTool), "resources\\app\\out\\cli.js"))
+		*/
+		cmd.Dir = basePath
+		cmd.Args = append(cmd.Args, "--wait", "--new-window", `"`+objSrcRelPathMine+`"`, `"`+objSrcRelPathBase+`"`)
+		return cmd
+	}
+	return nil
+}
 func init() {
-	diffCmd.Flags().StringVar(&mergeTool, "winmerge-path", "C:/Program Files/WinMerge/WinMergeU.exe", "Path to WinMergeU.exe.")
+	diffCmd.Flags().StringVar(&mergeTool, "diff-tool", "C:/Program Files/WinMerge/WinMergeU.exe", "Path to diff tool (WinMergeU.exe, code.exe or codium.exe).")
 	diffCmd.Flags().StringVar(&nameMine, "mine-name", "Mine", "Description in WinMerge for the mine file")
 	diffCmd.Flags().StringVar(&nameBase, "base-name", "Base", "Description in WinMerge for the base file")
 	diffCmd.Flags().StringVar(&nameTheirs, "theirs-name", "Theirs", "Description in WinMerge for the theirs file")

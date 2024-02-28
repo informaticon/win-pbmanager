@@ -52,7 +52,7 @@ func TestFixDatawindows(t *testing.T) {
 					t.Fatal(err)
 				}
 				if new != want {
-					fmt.Errorf("obj %s wasn't changed as expected", obj.GetName())
+					t.Errorf("obj %s wasn't changed as expected", obj.GetName())
 				}
 			}
 		}

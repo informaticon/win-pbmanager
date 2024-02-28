@@ -30,6 +30,15 @@ func FixDatawindows(pbtData *orca.Pbt, o *pborca.Orca, warnFunc func(string)) er
 				changed1, src := fixCheckboxAlignment(src)
 				changed2, src := fixHorizontalScrollbar(src)
 				if changed1 || changed2 {
+					fmt.Printf("Fix Dw %s because of %s\n", obj.Name, func() string {
+						if changed1 && changed2 {
+							return "CheckboxAlignment and HorizontalScrollbar"
+						} else if changed1 {
+							return "CheckboxAlignment"
+						} else {
+							return "HorizontalScrollbar"
+						}
+					}())
 					err = o.SetObjSource(pbtData.GetPath(), pbl, obj.Name, src)
 					if err != nil {
 						errs = append(errs, fmt.Sprintf("could not write source of %s in %s: %v", obj.Name, pbl, err))

@@ -336,6 +336,11 @@ func applyPostPatches(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 		}
 	}
 
+	err = migrate.FixDatawindows(pbtData, orca, printWarn)
+	if err != nil {
+		return
+	}
+
 	if utils.FileExists(filepath.Join(pbtData.BasePath, pbtData.AppName+".exe")) {
 		os.Remove(filepath.Join(pbtData.BasePath, pbtData.AppName+".exe"))
 	}

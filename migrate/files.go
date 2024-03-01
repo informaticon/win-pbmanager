@@ -22,7 +22,7 @@ var oldFiles string
 //go:embed uncommonFiles.txt
 var uncommonFiles string
 
-var urlPbdk = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdk@22.2.0-3289.zip"
+var urlPbdk = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdk@22.2.0-3289.1.zip"
 var urlPbdom = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdom@22.2.0-3289.pbl"
 
 func RemoveFiles(folder string, warnFunc func(string)) error {
@@ -157,7 +157,8 @@ func InsertNewPbdk(libFolder string) error {
 	return nil
 }
 
-func InsertNewPbdom(libFolder string, appName string) error {
+func InsertNewPbdom(pbt *orca.Pbt) error {
+	libFolder, appName := pbt.BasePath, pbt.AppName
 	pbdomFile, err := utils.GetRessource(urlPbdom)
 	if err != nil {
 		return fmt.Errorf("InsertNewPbdom failed: %v", err)
@@ -183,12 +184,19 @@ func InsertNewPbdom(libFolder string, appName string) error {
 	if err != nil {
 		return fmt.Errorf("InsertNewPbdom failed: %v", err)
 	}
+
+	// update libList of pbt, as it will be used later for the rest of the migration
+	newPbt, err := orca.NewPbtFromString(pbtFilePath, string(pbtData))
+	if err != nil {
+		return fmt.Errorf("regenerate pbt failed: %v", err)
+	}
+	pbt.LibList = newPbt.LibList
 	return nil
 }
 
 // InsertExfInPbt adds exf1.pbl to the library list, if it's needed
-func InsertExfInPbt(pbtData *orca.Pbt, orca *pborca.Orca) error {
-	src, err := orca.GetObjSource(pbtData.AppLib, pbtData.AppName+".sra")
+func InsertExfInPbt(pbt *orca.Pbt, Orca *pborca.Orca) error {
+	src, err := Orca.GetObjSource(pbt.AppLib, pbt.AppName+".sra")
 	if err != nil {
 		return nil
 	}
@@ -196,26 +204,33 @@ func InsertExfInPbt(pbtData *orca.Pbt, orca *pborca.Orca) error {
 		//no exf needed
 		return nil
 	}
-	if slices.Contains(pbtData.LibList, filepath.Join(pbtData.BasePath, "exf1.pbl")) {
+	if slices.Contains(pbt.LibList, filepath.Join(pbt.BasePath, "exf1.pbl")) {
 		//exf already in library list
 		return nil
 	}
 
 	// Fix lib list in current Data obj
-	pbtData.LibList = append(pbtData.LibList, filepath.Join(pbtData.BasePath, "exf1.pbl"))
+	pbt.LibList = append(pbt.LibList, filepath.Join(pbt.BasePath, "exf1.pbl"))
 
 	// Fix lib list in pbt file
-	pbtFile, err := os.ReadFile(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"))
+	pbtData, err := os.ReadFile(filepath.Join(pbt.BasePath, pbt.AppName+".pbt"))
 	if err != nil {
 		return fmt.Errorf("InsertExfInPbt failed: %v", err)
 	}
 
 	// add new pbdom
-	pbtFile = regexp.MustCompile(`(?mi)^(LibList[ \t]+".*?)(;inf3.pbl;.*?")`).ReplaceAll(pbtFile, []byte(`${1};exf1.pbl${2}`))
+	pbtData = regexp.MustCompile(`(?mi)^(LibList[ \t]+".*?)(;inf3.pbl;.*?")`).ReplaceAll(pbtData, []byte(`${1};exf1.pbl${2}`))
 
-	err = os.WriteFile(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"), pbtFile, 0664)
+	err = os.WriteFile(filepath.Join(pbt.BasePath, pbt.AppName+".pbt"), pbtData, 0664)
 	if err != nil {
 		return fmt.Errorf("InsertExfInPbt failed: %v", err)
 	}
+
+	// update libList of pbt, as it will be used later for the rest of the migration
+	newPbt, err := orca.NewPbtFromString(filepath.Join(pbt.BasePath, pbt.AppName+".pbt"), string(pbtData))
+	if err != nil {
+		return fmt.Errorf("regenerate pbt failed: %v", err)
+	}
+	pbt.LibList = newPbt.LibList
 	return nil
 }

@@ -227,7 +227,7 @@ func migrateToPb220(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 }
 
 func applyPrePatches(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)) (err error) {
-	err = migrate.InsertNewPbdom(pbtData.BasePath, pbtData.AppName)
+	err = migrate.InsertNewPbdom(pbtData)
 	if err != nil {
 		return
 	}

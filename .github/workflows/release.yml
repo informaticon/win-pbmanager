@@ -8,7 +8,7 @@ on:
       - prerelease
 jobs:
   createrelease:
-    runs-on: self-hosted
+    runs-on: [self-hosted, high-performance]
     env:
       GOPRIVATE: github.com/informaticon/*
       GH_ACCESS_TOKEN: ${{ secrets.GH_PRIVATE_READ_PAT }}

@@ -6,7 +6,6 @@ on:
       # former tag creation (pre_release_branches: prerelease, release_branches: main)
       - main
       - prerelease
-
 jobs:
   createrelease:
     runs-on: self-hosted

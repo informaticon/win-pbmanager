@@ -128,6 +128,12 @@ func InsertNewPbdk(libFolder string) error {
 
 	for _, srcFSObj := range pbdkZip.File {
 		dstPath := filepath.Join(libFolder, "pbdk", srcFSObj.Name)
+
+		// Excel this dll must be in lib folder
+		if srcFSObj.Name == "Sybase.PowerBuilder.DataWindow.Excel12.dll" {
+			dstPath = filepath.Join(libFolder, srcFSObj.Name)
+		}
+
 		if srcFSObj.FileInfo().IsDir() {
 			os.MkdirAll(dstPath, os.ModePerm)
 			continue

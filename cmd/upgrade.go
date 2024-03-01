@@ -63,7 +63,6 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 }
 
 func init() {
-	utils.GetRessource("https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdk@22.2.0-3289.zip")
 	upgradeCmd.Flags().Bool("only-patches", false, "only apply patches, without building/migration")
 	rootCmd.AddCommand(upgradeCmd)
 }

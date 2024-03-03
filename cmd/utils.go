@@ -58,6 +58,7 @@ func getCleanPblPbtFilePath(basePath, path string) (string, error) {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(basePath, path)
 	}
+	path = strings.ToLower(path)
 	if !isPblPbtFile(path) {
 		return "", fmt.Errorf("file %s does not exist or is not a pbl file", path)
 	}

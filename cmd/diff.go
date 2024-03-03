@@ -179,7 +179,7 @@ func diff(objFilePathBase, objFilePathMine string) error {
 		cmd = getDiffCommand(objSrcPathMine, objSrcPathBase, nameMine, nameBase)
 	} else if filepath.Ext(objFilePathBase) == ".pbl" {
 		cmd = getDiffCommand(
-			filepath.Join(objSrcPathMine, filepath.Base(objFilePathBase)),
+			filepath.Join(objSrcPathMine, filepath.Base(objFilePathMine)),
 			filepath.Join(objSrcPathBase, filepath.Base(objFilePathBase)),
 			nameMine, nameBase,
 		)
@@ -291,18 +291,29 @@ func getDiffCommand(objSrcPathMine, objSrcPathBase, nameMine, nameBase string) *
 		cmd.Dir = basePath
 		cmd.Args = append(cmd.Args, "/r", "/x", "/u", "/ignoreblanklines", objSrcRelPathMine, objSrcRelPathBase, "/dl", nameMine, "/dr", nameBase)
 		return cmd
-	} else if tool == "codium.exe" || tool == "codium" {
-		cmd := exec.Command("cmd.exe", "/C", `C:\Program Files\VSCodium\bin\codium.cmd`)
-		cmd.Env = append(cmd.Env, "COMPARE_FOLDERS=DIFF")
-		/*cmd.Env = append(cmd.Env,
-			"COMPARE_FOLDERS=DIFF",
-			"VSCODE_DEV=",
-			"ELECTRON_RUN_AS_NODE=1",
-		)
-		cmd.Args = append(cmd.Args, filepath.Join(filepath.Dir(mergeTool), "resources\\app\\out\\cli.js"))
-		*/
+	} else if tool == "codium" || tool == "code" {
+		cmd := exec.Command("powershell", "-nologo", "-noprofile")
 		cmd.Dir = basePath
-		cmd.Args = append(cmd.Args, "--wait", "--new-window", `"`+objSrcRelPathMine+`"`, `"`+objSrcRelPathBase+`"`)
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer stdin.Close()
+		fmt.Fprintf(stdin, "%s '%s' '%s' --wait --new-window\n", tool, objSrcRelPathMine, objSrcRelPathBase)
+		fmt.Fprintln(stdin, "exit")
+		cmd.Env = append(os.Environ(), "COMPARE_FOLDERS=DIFF")
+		/*
+
+			cmd := exec.Command("cmd.exe", "/C", `C:\Program Files\VSCodium\bin\codium.cmd`)
+			cmd.Env = append(cmd.Env, "COMPARE_FOLDERS=DIFF")
+			cmd.Env = append(cmd.Env,
+				"COMPARE_FOLDERS=DIFF",
+				"VSCODE_DEV=",
+				"ELECTRON_RUN_AS_NODE=1",
+			)
+			cmd.Args = append(cmd.Args, filepath.Join(filepath.Dir(mergeTool), "resources\\app\\out\\cli.js"))
+			cmd.Dir = basePath
+			cmd.Args = append(cmd.Args, "--wait", "--new-window", `"`+objSrcRelPathMine+`"`, `"`+objSrcRelPathBase+`"`)*/
 		return cmd
 	}
 	return nil

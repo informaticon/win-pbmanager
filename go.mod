@@ -3,7 +3,7 @@ module github.com/informaticon/dev.win.base.pbmanager
 go 1.21.1
 
 require (
-	github.com/informaticon/lib.go.base.pborca v0.0.0-20240228175157-c2713f7e93e3
+	github.com/informaticon/lib.go.base.pborca v0.0.0-20240303132317-f370805179ca
 	github.com/spf13/cobra v1.8.0
 	golang.org/x/sys v0.17.0
 )

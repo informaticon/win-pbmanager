@@ -90,6 +90,11 @@ func doPatch(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) er
 	}
 	defer orca.Close()
 
+	err = migrate.InsertNewPbdom(pbtData)
+	if err != nil {
+		return err
+	}
+
 	err = migrate.InsertExfInPbt(pbtData, orca)
 	if err != nil {
 		return err

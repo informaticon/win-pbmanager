@@ -13,6 +13,33 @@ import (
 	"github.com/informaticon/lib.go.base.pborca/orca"
 )
 
+func FixArf(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
+	pblFile := filepath.Join(libFolder, "arf1.pbl")
+	pbtFile := filepath.Join(libFolder, targetName+".pbt")
+	objName := "arf1_u_arf_service_lohn"
+	regex := regexp.MustCompile(`(?is)([ \t]*\/\/2020-10-02 Martin Abplanalp, Ticket 19529[^\r\n]+[\r\n\t ]+)(ls_release_liblohn.*?end if)`)
+
+	src, err := orca.GetObjSource(pblFile, objName)
+	if err != nil {
+		warnFunc(fmt.Sprintf("skipping arf1_u_arf_service_lohn migration (file %s does not contain an object named %s)", pblFile, objName))
+		return nil
+	}
+	matches := regex.FindAllStringSubmatch(src, -1)
+	if len(matches) > 1 {
+		return fmt.Errorf("FixArf failed: Too many matches: %v", matches)
+	} else if len(matches) < 1 {
+		warnFunc(fmt.Sprintf("skipping arf1_u_arf_service_lohn migration (file %s does not contain expected string)", pblFile))
+		return nil
+	}
+	src = regex.ReplaceAllString(src, `${1}/*COMMENTED OUT BY PB2022R3 MIGRATION: ${2}*/`)
+
+	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	if err != nil {
+		return fmt.Errorf("FixArf failed: %v", err)
+	}
+	return nil
+}
+
 func FixRegistry(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
 	pblFile := filepath.Join(libFolder, "inf1.pbl")
 	pbtFile := filepath.Join(libFolder, targetName+".pbt")

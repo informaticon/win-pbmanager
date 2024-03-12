@@ -44,9 +44,8 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 		if err != nil {
 			return err
 		}
-
-		if yes, _ := cmd.Flags().GetBool("only-patches"); yes {
-			err = doPatch(pbtData, orcaVars.pbVersion, opts...)
+		if patches, _ := cmd.Flags().GetString("patches"); patches != "no" {
+			err = doPatch(pbtData, patches, orcaVars.pbVersion, opts...)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(2)
@@ -63,7 +62,7 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 }
 
 func init() {
-	upgradeCmd.Flags().Bool("only-patches", false, "only apply patches, without building/migration")
+	upgradeCmd.Flags().String("patches", "no", "one of [no|all|FixArf] only apply patches, without building/migration (all=yes, all; FixArf=only fix arf bug)")
 	rootCmd.AddCommand(upgradeCmd)
 }
 
@@ -83,12 +82,16 @@ func buildWithPbc(pbtPath string) string {
 	return fmt.Sprintf("Build with pbc220.exe was successfull, compiler log:\n%s", log)
 }
 
-func doPatch(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) error {
+func doPatch(pbtData *orca.Pbt, patchType string, pbVersion int, options ...func(*pborca.Orca)) error {
 	orca, err := pborca.NewOrca(pbVersion, options...)
 	if err != nil {
 		return err
 	}
 	defer orca.Close()
+
+	if strings.ToLower(patchType) == "fixarf" {
+		return migrate.FixArf(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+	}
 
 	err = migrate.InsertNewPbdom(pbtData)
 	if err != nil {
@@ -326,6 +329,11 @@ func applyPostPatches(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 		if err != nil {
 			return
 		}
+	}
+
+	err = migrate.FixArf(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+	if err != nil {
+		return
 	}
 
 	err = migrate.FixPbInit(pbtData.BasePath, printWarn)

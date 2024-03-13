@@ -1,6 +1,12 @@
 
 # Usage
 
+## Upgrade PowerBuilder
+
+```
+pbmanager upgrade <target>
+```
+
 ## TortoiseSVN configuration
 
 Diff command for .pbl:

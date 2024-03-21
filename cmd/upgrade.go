@@ -22,7 +22,7 @@ var upgradeCmd = &cobra.Command{
 	Use:   "upgrade <pbt path>",
 	Short: "Upgrade (migrate) a PowerBuilder project",
 	Long: `Migrate a project from an older PoweBuilder version.
-You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt). The function then applies required mode and performs the migration.`,
+You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt). The function then applies required patches and performs the migration.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !filepath.IsAbs(args[0]) {
@@ -44,14 +44,14 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 		if err != nil {
 			return err
 		}
-		if mode, _ := cmd.Flags().GetString("mode"); mode != "full" {
-			err = doPatch(pbtData, mode, orcaVars.pbVersion, opts...)
+		if mode, _ := cmd.Flags().GetString("mode"); mode == "full" {
+			err = doUpgrade(pbtData, orcaVars.pbVersion, opts...)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(2)
 			}
 		} else {
-			err = doUpgrade(pbtData, orcaVars.pbVersion, opts...)
+			err = doPatch(pbtData, mode, orcaVars.pbVersion, opts...)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(2)
@@ -125,13 +125,13 @@ func doPatch(pbtData *orca.Pbt, patchType string, pbVersion int, options ...func
 	}
 
 	if pbtData.AppName == "a3" || pbtData.AppName == "loh" {
-		err = applyPostmode(pbtData, orca)
+		err = applyPostPatches(pbtData, orca)
 		if err != nil {
 			return err
 		}
-		fmt.Println("Applying mode done")
+		fmt.Println("Applying patches done")
 	} else {
-		fmt.Println("Skipping applying mode (not an a3/lohn project) ")
+		fmt.Println("Skipping applying patches (not an a3/lohn project) ")
 	}
 
 	libs3rd.CleanupLibs()
@@ -173,7 +173,7 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 		}
 	}
 
-	err = applyPremode(pbtData, orca, printWarn)
+	err = applyPrePatches(pbtData, orca, printWarn)
 	if err != nil {
 		fmt.Println(buildWithPbc(pbtData.GetPath()))
 		return err
@@ -187,13 +187,13 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 	fmt.Println("Migration to Pb220 done")
 
 	if pbtData.AppName == "a3" || pbtData.AppName == "loh" {
-		err = applyPostmode(pbtData, orca)
+		err = applyPostPatches(pbtData, orca)
 		if err != nil {
 			return err
 		}
-		fmt.Println("Applying mode done")
+		fmt.Println("Applying patches done")
 	} else {
-		fmt.Println("Skipping applying mode (not an a3/lohn project) ")
+		fmt.Println("Skipping applying patches (not an a3/lohn project) ")
 	}
 
 	dat, err := orca.FullBuildTarget(filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt"))
@@ -204,6 +204,10 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 	fmt.Println("Full Build done")
 	libs3rd.CleanupLibs()
 	fmt.Println("Deleting helper libs done")
+
+	if utils.FileExists(filepath.Join(pbtData.BasePath, pbtData.AppName+".exe")) {
+		os.Remove(filepath.Join(pbtData.BasePath, pbtData.AppName+".exe"))
+	}
 
 	return nil
 }
@@ -233,13 +237,13 @@ func migrateToPb220(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	return nil
 }
 
-func applyPremode(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)) (err error) {
+func applyPrePatches(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)) (err error) {
 	err = migrate.InsertNewPbdom(pbtData)
 	if err != nil {
 		return
 	}
 
-	// Apply PB115 mode
+	// Apply PB115 patches
 	pblFile := filepath.Join(pbtData.BasePath, "lif1.pbl")
 	pbtFile := filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt")
 
@@ -278,7 +282,7 @@ func applyPremode(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)) (
 	fmt.Println("PB115 pre migration finished")
 	return nil
 }
-func applyPostmode(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
+func applyPostPatches(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	if pbtData.AppName == "a3" {
 		// lohn has no registry object
 		err = migrate.FixRegistry(pbtData.BasePath, pbtData.AppName, orca, printWarn)
@@ -351,10 +355,6 @@ func applyPostmode(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	err = migrate.FixDatawindows(pbtData, orca, printWarn)
 	if err != nil {
 		return
-	}
-
-	if utils.FileExists(filepath.Join(pbtData.BasePath, pbtData.AppName+".exe")) {
-		os.Remove(filepath.Join(pbtData.BasePath, pbtData.AppName+".exe"))
 	}
 
 	return

@@ -116,6 +116,10 @@ func FixPbInit(folder string, warnFunc func(string)) error {
 }
 
 func InsertNewPbdk(libFolder string) error {
+	if !utils.FileExists(filepath.Join(libFolder, "pbdk")) {
+		return nil
+	}
+
 	pbdkZipFile, err := utils.GetRessource(urlPbdk)
 	if err != nil {
 		return fmt.Errorf("InsertNewPbdk failed while downloading pbdk: %v", err)

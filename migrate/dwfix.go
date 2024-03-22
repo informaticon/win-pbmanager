@@ -73,7 +73,7 @@ func fixHorizontalScrollbar(src string) (bool, string) {
 	}
 	if regexDwHorizontalScollbar2.MatchString(src) {
 		ret = true
-		src = regexDwHorizontalScollbar1.ReplaceAllString(src, `${1}edit.autohscroll=yes `)
+		src = regexDwHorizontalScollbar2.ReplaceAllString(src, `${1}edit.autohscroll=yes `)
 	}
 	return ret, src
 }

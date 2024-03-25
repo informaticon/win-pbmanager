@@ -157,7 +157,7 @@ func FixLifProcess(libFolder string, targetName string, orca *pborca.Orca, warnF
 	if len(matches) != 1 {
 		return fmt.Errorf("FixLifProcess failed: exe string is not present in project %s", libFolder)
 	}
-	if strings.Trim(matches[0][1], " \t") != `lower(ls_exe) = "pb170.exe" or lower(ls_exe) = "pb220.exe" or lower(ls_exe) = "pb250.exe"` {
+	if strings.Trim(matches[0][1], " \t") == `lower(ls_exe) = "pb170.exe" or lower(ls_exe) = "pb220.exe" or lower(ls_exe) = "pb250.exe"` {
 		warnFunc(fmt.Sprintf("skipping %s migration, already migrated", objName))
 		return nil
 	}
@@ -310,6 +310,11 @@ func ChangePbdomBuildOptions(projLibName string, projName string, pbtData *orca.
 	}
 
 	regex := regexp.MustCompile(`(?im)(PBD:pbdom[0-9]+\.pbl,,[01])`)
+	if len(regex.FindAllString(src, -1)) == 0 {
+		warnFunc("skipping change of pbdom build setting, already migrated")
+		return nil
+	}
+
 	src = regex.ReplaceAllString(src, `PBD:pbdom.pbl,,1`)
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil {

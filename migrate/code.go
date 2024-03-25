@@ -48,12 +48,17 @@ func FixRegistry(libFolder string, targetName string, orca *pborca.Orca, warnFun
 
 	src, err := orca.GetObjSource(pblFile, objName)
 	if err != nil {
-		warnFunc(fmt.Sprintf("skipping inf1_u_registry migration (file %s does not contain an object named %s)", pblFile, objName))
+		warnFunc(fmt.Sprintf("skipping %s migration, file %s does not contain an object named %s", objName, pblFile, objName))
 		return nil
 	}
+
 	matches := regex.FindAllStringSubmatch(src, -1)
 	if len(matches) != 1 {
 		return fmt.Errorf("FixRegistry failed: ole string is not present in project %s", libFolder)
+	}
+	if strings.Trim(matches[0][1], " ") == `"a3.exe", "pb170.exe", "pb220.exe", "pb250.exe"` {
+		warnFunc(fmt.Sprintf("skipping %s migration, object %s is already migrated", objName, objName))
+		return nil
 	}
 	if strings.Trim(matches[0][1], " ") != `"a3.exe", "pb170.exe"` &&
 		strings.Trim(matches[0][1], " ") != `"a3.exe", "pb170.exe", "pb220.exe", "pb250.exe"` {
@@ -82,6 +87,10 @@ func FixHttpClient(libFolder string, targetName string, orca *pborca.Orca, warnF
 			warnFunc(fmt.Sprintf("skipping %s migration, file %s doesn't contain %s", objName, pblFile, objName))
 			return nil
 		}
+		if len(regex.FindAllString(src, -1)) == 0 {
+			warnFunc(fmt.Sprintf("skipping %s migration, already migrated", objName))
+			return nil
+		}
 
 		src = regex.ReplaceAllString(src, `${1}${2}lu_client.anonymousaccess = true${2}${3}`)
 
@@ -100,13 +109,13 @@ func FixHttpClient(libFolder string, targetName string, orca *pborca.Orca, warnF
 	step2 := func() error {
 		pblFile := filepath.Join(libFolder, "inf1.pbl")
 		objName := "inf1_u_httpclient"
-		regex := regexp.MustCompile(`(?mi)global type inf1_u_httpclient from httpclient[\r\n \t]+boolean anonymousaccess = true`)
 		src, err := orca.GetObjSource(pblFile, objName)
 		if err != nil {
 			warnFunc(fmt.Sprintf("skipping %s migration, file %s doesn't contain %s", objName, pblFile, objName))
 			return nil
 		}
-		if len(regex.FindAllStringSubmatch(src, -1)) >= 1 {
+		regex := regexp.MustCompile(`(?mi)global type inf1_u_httpclient from httpclient[\r\n \t]+boolean anonymousaccess = true`)
+		if len(regex.FindAllString(src, -1)) >= 1 {
 			warnFunc(fmt.Sprintf("skipping %s migration, already migrated", objName))
 			return nil
 		}
@@ -148,10 +157,14 @@ func FixLifProcess(libFolder string, targetName string, orca *pborca.Orca, warnF
 	if len(matches) != 1 {
 		return fmt.Errorf("FixLifProcess failed: exe string is not present in project %s", libFolder)
 	}
-	if strings.Trim(matches[0][1], " ") != `lower(ls_exe) = "pb115.exe" or lower(ls_exe) = "pb170.exe"` &&
-		strings.Trim(matches[0][1], " ") != `lower(ls_exe) = "pb170.exe" or lower(ls_exe) = "pb220.exe" or lower(ls_exe) = "pb250.exe"` {
+	if strings.Trim(matches[0][1], " \t") != `lower(ls_exe) = "pb170.exe" or lower(ls_exe) = "pb220.exe" or lower(ls_exe) = "pb250.exe"` {
+		warnFunc(fmt.Sprintf("skipping %s migration, already migrated", objName))
+		return nil
+	}
+	if strings.Trim(matches[0][1], " \t") != `lower(ls_exe) = "pb115.exe" or lower(ls_exe) = "pb170.exe"` {
 		warnFunc(fmt.Sprintf("  %s in folder %s doesnt contain the expected content (%s)", objName, libFolder, matches[0][1]))
 	}
+
 	src = regex.ReplaceAllString(src, `	if lower(ls_exe) = "pb170.exe" or lower(ls_exe) = "pb220.exe" or lower(ls_exe) = "pb250.exe" then`)
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil {
@@ -176,6 +189,12 @@ func FixLifMetratec(libFolder string, targetName string, orca *pborca.Orca, warn
 	}
 
 	regex := regexp.MustCompile(`(?im)([ \t])(_INFO|_FATAL|_ERROR|_DEBUG|_WARN)`)
+
+	if len(regex.FindAllString(src, -1)) == 0 {
+		warnFunc(fmt.Sprintf("skipping %s migration, already migrated", objName))
+		return nil
+	}
+
 	src = regex.ReplaceAllString(src, `${1}CI${2}`)
 	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
 	if err != nil && !ignoreCompileErr {
@@ -197,6 +216,10 @@ func FixPayrollXmlDecl(libFolder string, targetName string, orca *pborca.Orca, w
 		if err != nil {
 			warnFunc(fmt.Sprintf("skipping %s migration (does not exist in %s)", objName, pblFile))
 			continue
+		}
+		if len(regex1.FindAllString(src, -1)) == 0 && len(regex2.FindAllString(src, -1)) == 0 {
+			warnFunc(fmt.Sprintf("skipping %s migration, already migrated", objName))
+			return nil
 		}
 		src = regex1.ReplaceAllString(src, `ipbdom_document.setxmldeclaration("1.0", "UTF-8", "yes")`)
 		src = regex2.ReplaceAllString(src, ``)
@@ -220,7 +243,7 @@ func FixPayrollXmlEncoding(libFolder string, targetName string, orca *pborca.Orc
 		return nil
 	}
 	if strings.Contains(src, `if lpd_obj[1].getobjectclassstring() <> "pbdom_processinginstruction" then`) {
-		warnFunc(fmt.Sprintf("skipping %s migration (already done)", objName))
+		warnFunc(fmt.Sprintf("skipping %s migration, already migrated", objName))
 		return nil
 	}
 	src = strings.ReplaceAll(src, `apd_doc.GetContent(lpd_obj)`,
@@ -250,13 +273,20 @@ func AddMirrorObjects(libFolder string, targetName string, orca *pborca.Orca, wa
 	if err != nil {
 		return fmt.Errorf("AddMirrorObjects failed: %v", err)
 	}
+	objList, err := orca.GetObjList(pblFile)
+	if err != nil {
+		return fmt.Errorf("AddMirrorObjects failed: %v", err)
+	}
 	for _, file := range files {
 		objSrc, err := mirrorFiles.ReadFile("mirror_objects/" + file.Name())
 		if err != nil {
 			return fmt.Errorf("AddMirrorObjects failed: %v", err)
 		}
 		objName := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
-
+		if _, ok := objList[objName]; !ok {
+			warnFunc(fmt.Sprintf("skipping import of mirror object %s, it already exists", objName))
+			continue
+		}
 		err = orca.SetObjSource(pbtFile, pblFile, objName, string(objSrc))
 		if err != nil {
 			return fmt.Errorf("AddMirrorObjects failed: %v", err)
@@ -266,7 +296,7 @@ func AddMirrorObjects(libFolder string, targetName string, orca *pborca.Orca, wa
 }
 
 // ChangePbdomBuildOptions adds pbdom to the build projects` build list.
-// It also removes the old bbdom from the list
+// It also removes the old pbdom from the list
 func ChangePbdomBuildOptions(projLibName string, projName string, pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)) error {
 
 	pblFile := filepath.Join(pbtData.BasePath, projLibName)

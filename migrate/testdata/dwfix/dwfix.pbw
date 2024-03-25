@@ -3,5 +3,5 @@ Save Format v3.0(19990112)
  0 "dwfix.pbt.vanilla.pbt";
  1 "dwfix.pbt.want.pbt";
 @end;
-DefaultTarget "dwfix.pbt.vanilla.pbt";
-DefaultRemoteTarget "dwfix.pbt.vanilla.pbt";
+DefaultTarget "dwfix.pbt.want.pbt";
+DefaultRemoteTarget "dwfix.pbt.want.pbt";

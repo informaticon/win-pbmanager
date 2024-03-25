@@ -28,7 +28,7 @@ func TestFixDatawindows(t *testing.T) {
 	}
 	defer o.Close()
 
-	err = FixDatawindows(pbtData, o, printWarn)
+	err = FixDatawindows(pbtData, o, DwfixAll, printWarn)
 	if err != nil {
 		t.Fatal(err)
 	}

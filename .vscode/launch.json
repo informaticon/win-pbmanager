@@ -39,7 +39,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
-            "args": ["upgrade", "C:\\a3\\erp.win.base.main\\lib\\a3.pbt", "--patches", "FixArf"]
+            "args": ["upgrade", "C:\\a3\\erp.win.base.main\\lib\\a3.pbt", "--mode", "FixFinDw"]
         },{
             "name": "Export pbt",
             "type": "go",

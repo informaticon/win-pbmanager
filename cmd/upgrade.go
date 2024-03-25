@@ -21,7 +21,7 @@ import (
 var upgradeCmd = &cobra.Command{
 	Use:   "upgrade <pbt path>",
 	Short: "Upgrade (migrate) a PowerBuilder project",
-	Long: `Migrate a project from an older PoweBuilder version.
+	Long: `Migrate a project from an older PowerBuilder version.
 You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt). The function then applies required patches and performs the migration.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -62,7 +62,7 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 }
 
 func init() {
-	upgradeCmd.Flags().String("mode", "full", "one of [full|patches|FixArf], (full=upgrade with patches, patches=only patches, others: fix a particular bug)")
+	upgradeCmd.Flags().String("mode", "full", "one of [full|patches|FixArf|FixFinDw], (full=upgrade with patches, patches=only patches, others: fix a particular bug)")
 	rootCmd.AddCommand(upgradeCmd)
 }
 
@@ -91,6 +91,13 @@ func doPatch(pbtData *orca.Pbt, patchType string, pbVersion int, options ...func
 
 	if strings.ToLower(patchType) == "fixarf" {
 		return migrate.FixArf(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+	}
+
+	switch strings.ToLower(patchType) {
+	case "fixarf":
+		return migrate.FixArf(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+	case "fixfindw":
+		return migrate.FixDatawindows(pbtData, orca, migrate.DwfixFinScrollbar, printWarn)
 	}
 
 	err = migrate.InsertNewPbdom(pbtData)
@@ -352,7 +359,7 @@ func applyPostPatches(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 		}
 	}
 
-	err = migrate.FixDatawindows(pbtData, orca, printWarn)
+	err = migrate.FixDatawindows(pbtData, orca, migrate.DwfixAll, printWarn)
 	if err != nil {
 		return
 	}

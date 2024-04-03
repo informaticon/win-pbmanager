@@ -77,6 +77,7 @@ With --output-dir, you can specify the path where the object(s) are exportet to.
 		if err != nil {
 			return err
 		}
+		defer Orca.Close()
 
 		if fileType == ".pbt" {
 			err = exportPbt(Orca, pbxFilePath, objRegex, exportOutputDir)
@@ -99,7 +100,7 @@ var exportCreateSupdir bool
 
 func init() {
 	rootCmd.AddCommand(exportCmd)
-	exportCmd.PersistentFlags().StringP("object-name", "n", "*", "name of object to export like inf1_u_application.sru")
+	exportCmd.PersistentFlags().StringP("object-name", "n", "*", "name or regex of object to export like 'inf1_u_mail.sru' or 'u_.*'")
 	exportCmd.PersistentFlags().StringP("output-dir", "o", "", "path to output directory (default is <pbl/pbt path>/src")
 	exportCmd.PersistentFlags().BoolVarP(&exportCreateSupdir, "create-subdir", "s", true, "create a subfolder with the library name to export the source file(s) into")
 }

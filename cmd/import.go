@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/informaticon/dev.win.base.pbmanager/utils"
@@ -68,19 +69,30 @@ Examples:
 				return err
 			}
 		} else {
+			var errs = make(map[string]error)
 			err = filepath.WalkDir(srcPath, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
 					return err
+				}
+				if d.IsDir() {
+					return nil
 				}
 				srcData, err := os.ReadFile(path)
 				if err != nil {
 					return err
 				}
-				err = Orca.SetObjSource(pbtFilePath, pblFilePath, filepath.Base(srcPath), string(srcData))
-				return err
+				objName := strings.TrimSuffix(filepath.Base(path), filepath.Ext(filepath.Base(path)))
+				err = Orca.SetObjSource(pbtFilePath, pblFilePath, filepath.Base(objName), string(srcData))
+				if err != nil {
+					errs[objName] = err
+				}
+				return nil
 			})
 			if err != nil {
 				return err
+			}
+			if len(errs) > 0 {
+				fmt.Printf("compilation errors occured: %v\n", errs)
 			}
 		}
 

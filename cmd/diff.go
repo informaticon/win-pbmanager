@@ -162,7 +162,7 @@ func diff(objFilePathBase, objFilePathMine string) error {
 
 			for job := range c {
 				fmt.Println("Exporting ", job.libraryPath, " to ", job.destinationPath)
-				err := exportPbl(Orca, job.libraryPath, regexp.MustCompile("^.*$"), job.destinationPath)
+				err := exportPbl(Orca, job.libraryPath, regexp.MustCompile("^.*$"), job.destinationPath, "utf8")
 				if err != nil {
 					fmt.Println(err)
 				}

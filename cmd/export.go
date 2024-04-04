@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/informaticon/dev.win.base.pbmanager/utils"
 	pborca "github.com/informaticon/lib.go.base.pborca"
 	"github.com/informaticon/lib.go.base.pborca/orca"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 )
 
 // exportCmd represents the export command
@@ -26,6 +26,7 @@ With --output-dir, you can specify the path where the object(s) are exportet to.
 		pbxFilePath := args[0]
 		objName, _ := cmd.Flags().GetString("object-name")
 		exportOutputDir, _ := cmd.Flags().GetString("output-dir")
+		exportOutputEnc, _ := cmd.Flags().GetString("output-encoding")
 		fileType := filepath.Ext(pbxFilePath)
 
 		// check/create obj regex
@@ -80,12 +81,12 @@ With --output-dir, you can specify the path where the object(s) are exportet to.
 		defer Orca.Close()
 
 		if fileType == ".pbt" {
-			err = exportPbt(Orca, pbxFilePath, objRegex, exportOutputDir)
+			err = exportPbt(Orca, pbxFilePath, objRegex, exportOutputDir, exportOutputEnc)
 			if err != nil {
 				return err
 			}
 		} else {
-			err = exportPbl(Orca, pbxFilePath, objRegex, exportOutputDir)
+			err = exportPbl(Orca, pbxFilePath, objRegex, exportOutputDir, exportOutputEnc)
 			if err != nil {
 				return err
 			}
@@ -101,13 +102,15 @@ var exportCreateSupdir bool
 func init() {
 	rootCmd.AddCommand(exportCmd)
 	exportCmd.PersistentFlags().StringP("object-name", "n", "*", "name or regex of object to export like 'inf1_u_mail.sru' or 'u_.*'")
-	exportCmd.PersistentFlags().StringP("output-dir", "o", "", "path to output directory (default is <pbl/pbt path>/src")
+	exportCmd.PersistentFlags().StringP("output-dir", "o", "", "path to output directory (default is <pbl/pbt path>/src)")
+	exportCmd.PersistentFlags().String("output-encoding", "utf8", fmt.Sprintf("encoding to use, possible values: %s", maps.Keys(encodings)))
+
 	exportCmd.PersistentFlags().BoolVarP(&exportCreateSupdir, "create-subdir", "s", true, "create a subfolder with the library name to export the source file(s) into")
 }
 
-func exportPbl(Orca *pborca.Orca, pblFilePath string, objRegex *regexp.Regexp, outputDirectory string) error {
+func exportPbl(Orca *pborca.Orca, pblFilePath string, objRegex *regexp.Regexp, outDir string, outEnc string) error {
 	if exportCreateSupdir {
-		outputDirectory = filepath.Join(outputDirectory, filepath.Base(pblFilePath))
+		outDir = filepath.Join(outDir, filepath.Base(pblFilePath))
 	}
 
 	objs, err := Orca.GetObjList(pblFilePath)
@@ -132,13 +135,17 @@ func exportPbl(Orca *pborca.Orca, pblFilePath string, objRegex *regexp.Regexp, o
 			}
 			if !dirCreated {
 				fmt.Printf("Exporting library %s\n", filepath.Base(filepath.Base(pblFilePath)))
-				err := os.MkdirAll(outputDirectory, os.ModeDir)
+				err := os.MkdirAll(outDir, os.ModeDir)
 				if err != nil {
 					return err
 				}
 				dirCreated = true
 			}
-			err = os.WriteFile(filepath.Join(outputDirectory, fileName), []byte(srcData), 0664)
+			srcBytes, err := encode(srcData, outEnc)
+			if err != nil {
+				return err
+			}
+			err = os.WriteFile(filepath.Join(outDir, fileName), srcBytes, 0664)
 			if err != nil {
 				return err
 			}
@@ -148,7 +155,7 @@ func exportPbl(Orca *pborca.Orca, pblFilePath string, objRegex *regexp.Regexp, o
 	return nil
 }
 
-func exportPbt(Orca *pborca.Orca, pbtFilePath string, objRegex *regexp.Regexp, outputDirectory string) error {
+func exportPbt(Orca *pborca.Orca, pbtFilePath string, objRegex *regexp.Regexp, outDir string, outEnc string) error {
 	pbt, err := orca.NewPbtFromFile(pbtFilePath)
 	if err != nil {
 		return err
@@ -158,7 +165,7 @@ func exportPbt(Orca *pborca.Orca, pbtFilePath string, objRegex *regexp.Regexp, o
 			fmt.Printf("Library %s does not exist, skipping.....\n", lib)
 			continue
 		}
-		err = exportPbl(Orca, lib, objRegex, outputDirectory)
+		err = exportPbl(Orca, lib, objRegex, outDir, outEnc)
 		if err != nil {
 			return err
 		}
@@ -167,9 +174,10 @@ func exportPbt(Orca *pborca.Orca, pbtFilePath string, objRegex *regexp.Regexp, o
 	return nil
 }
 
+/*
 func exportPbtWg(Orca *pborca.Orca, pbtFilePath string, objRegex *regexp.Regexp, outputDirectory string, wg *sync.WaitGroup) error {
 	defer wg.Done()
-	err := exportPbt(Orca, pbtFilePath, objRegex, outputDirectory)
+	err := exportPbt(Orca, pbtFilePath, objRegex, outputDirectory, )
 	//wg.Wait()
 	return err
 }
@@ -180,3 +188,4 @@ func exportPblWg(Orca *pborca.Orca, pblFilePath string, objRegex *regexp.Regexp,
 	//wg.Wait()
 	return err
 }
+*/

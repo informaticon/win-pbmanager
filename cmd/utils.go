@@ -7,6 +7,9 @@ import (
 	"strings"
 
 	"github.com/informaticon/dev.win.base.pbmanager/utils"
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/encoding/unicode"
 )
 
 func findPbtFilePath(basePath string, pbtFilePath string) (string, error) {
@@ -79,4 +82,20 @@ func isDir(path string) bool {
 		return false
 	}
 	return stat.IsDir()
+}
+
+var encodings = map[string]encoding.Encoding{
+	"utf8":    unicode.UTF8,
+	"utf8bom": unicode.UTF8BOM,
+	"utf16":   unicode.UTF16(unicode.LittleEndian, unicode.ExpectBOM),
+	"utf16le": unicode.UTF16(unicode.LittleEndian, unicode.UseBOM),
+	"cp1252":  charmap.Windows1252,
+}
+
+func encode(str string, enc string) ([]byte, error) {
+	if encoder, ok := encodings[enc]; ok {
+		return encoder.NewEncoder().Bytes([]byte(str))
+	}
+	return nil, fmt.Errorf("unknown encoding %s", enc)
+
 }

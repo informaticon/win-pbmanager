@@ -22,8 +22,8 @@ var oldFiles string
 //go:embed uncommonFiles.txt
 var uncommonFiles string
 
-var urlPbdk = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdk@22.2.0-3289.1.zip"
-var urlPbdom = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdom@22.2.0-3289.pbl"
+var urlPbdk = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdk@22.2.0-3356.zip"
+var urlPbdom = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdom@22.2.0-3356.pbl"
 
 func RemoveFiles(folder string, warnFunc func(string)) error {
 	lines := strings.Split(string(oldFiles), "\r\n")

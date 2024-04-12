@@ -57,12 +57,19 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 				os.Exit(2)
 			}
 		}
+
+		if removeExe, _ := cmd.Flags().GetBool("remove-exe"); removeExe {
+			if utils.FileExists(filepath.Join(pbtData.BasePath, pbtData.AppName+".exe")) {
+				os.Remove(filepath.Join(pbtData.BasePath, pbtData.AppName+".exe"))
+			}
+		}
 		return nil
 	},
 }
 
 func init() {
 	upgradeCmd.Flags().String("mode", "full", "one of [full|patches|FixArf|FixFinDw], (full=upgrade with patches, patches=only patches, others: fix a particular bug)")
+	upgradeCmd.Flags().Bool("remove-exe", false, "remove existing target exe after migration")
 	rootCmd.AddCommand(upgradeCmd)
 }
 
@@ -212,14 +219,10 @@ func doUpgrade(pbtData *orca.Pbt, pbVersion int, options ...func(*pborca.Orca)) 
 	libs3rd.CleanupLibs()
 	fmt.Println("Deleting helper libs done")
 
-	if utils.FileExists(filepath.Join(pbtData.BasePath, pbtData.AppName+".exe")) {
-		os.Remove(filepath.Join(pbtData.BasePath, pbtData.AppName+".exe"))
-	}
-
 	return nil
 }
 
-func migrateToPb220(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
+func migrateToPb220(pbtData *orca.Pbt, orca *pborca.Orca) error {
 	pbtFilePath := filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt")
 
 	out, err := orca.MigrateTarget(pbtFilePath)
@@ -227,20 +230,6 @@ func migrateToPb220(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 		return fmt.Errorf("migration of %s failed, compiler log\n%s\nORCA Error:%v", pbtFilePath, strings.Join(out, "\n"), err)
 	}
 
-	err = migrate.FixRuntimeFolder(pbtData, orca, printWarn)
-	if err != nil {
-		return
-	}
-	for _, proj := range pbtData.Projects {
-		err = migrate.ChangePbdomBuildOptions(proj.PblFile, proj.Name, pbtData, orca, printWarn)
-		if err != nil && slices.Contains([]string{"a3", "loh"}, proj.Name) {
-			return
-		}
-	}
-
-	if err != nil {
-		return
-	}
 	return nil
 }
 
@@ -290,10 +279,23 @@ func applyPrePatches(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)
 	return nil
 }
 func applyPostPatches(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
+
 	if pbtData.AppName == "a3" {
 		// lohn has no registry object
 		err = migrate.FixRegistry(pbtData.BasePath, pbtData.AppName, orca, printWarn)
 		if err != nil {
+			return
+		}
+	}
+
+	err = migrate.FixRuntimeFolder(pbtData, orca, printWarn)
+	if err != nil {
+		return
+	}
+
+	for _, proj := range pbtData.Projects {
+		err = migrate.ChangePbdomBuildOptions(proj.PblFile, proj.Name, pbtData, orca, printWarn)
+		if err != nil && slices.Contains([]string{"a3", "loh"}, proj.Name) {
 			return
 		}
 	}

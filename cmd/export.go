@@ -44,7 +44,7 @@ With --output-dir, you can specify the path where the object(s) are exportet to.
 			return err
 		}
 
-		//check if user passed the create-subdir flag as it has no effect when exporting .pbt files
+		// check if user passed the create-subdir flag as it has no effect when exporting .pbt files
 		if cmd.Flags().Lookup("create-subdir").Changed && fileType == ".pbt" {
 			fmt.Println("--create-subdir has no effect when exporting .pbt")
 		}
@@ -52,12 +52,12 @@ With --output-dir, you can specify the path where the object(s) are exportet to.
 		if !filepath.IsAbs(pbxFilePath) {
 			pbxFilePath = filepath.Join(basePath, pbxFilePath)
 		}
-		//check if provided objFilePath exists and is allowed
+		// check if provided objFilePath exists and is allowed
 		if !utils.FileExists(pbxFilePath) || (fileType != ".pbl" && fileType != ".pbt") {
 			return fmt.Errorf("file %s does not exist or is not a pbl/pbt file", pbxFilePath)
 		}
 
-		//if no output directory is provided, store the export along side the objFilePath in the src folder
+		// if no output directory is provided, store the export along side the objFilePath in the src folder
 		if exportOutputDir == "" {
 			exportOutputDir = filepath.Join(filepath.Dir(pbxFilePath), "src")
 		}
@@ -118,7 +118,7 @@ func exportPbl(Orca *pborca.Orca, pblFilePath string, objRegex *regexp.Regexp, o
 		return err
 	}
 
-	var dirCreated = false
+	dirCreated := false
 	for _, objArr := range objs {
 		for _, obj := range objArr.GetObjArr() {
 			objName := obj.GetName() + pborca.GetObjSuffixFromType(obj.GetObjType())
@@ -145,7 +145,7 @@ func exportPbl(Orca *pborca.Orca, pblFilePath string, objRegex *regexp.Regexp, o
 			if err != nil {
 				return err
 			}
-			err = os.WriteFile(filepath.Join(outDir, fileName), srcBytes, 0664)
+			err = os.WriteFile(filepath.Join(outDir, fileName), srcBytes, 0o664)
 			if err != nil {
 				return err
 			}

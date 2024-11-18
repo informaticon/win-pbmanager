@@ -146,7 +146,7 @@ func FixLifProcess(libFolder string, targetName string, orca *pborca.Orca, warnF
 		}
 	}
 
-	//if lower(ls_exe) = "pb115.exe" or lower(ls_exe) = "pb170.exe" then
+	// if lower(ls_exe) = "pb115.exe" or lower(ls_exe) = "pb170.exe" then
 	regex := regexp.MustCompile(`(?mi)[ \t]*if[ ]+(lower\([ ]*ls_exe[ ]*\)[ ]*=[ ]*"pb[0-9]{3}\.exe".*?)then[ ]*`)
 
 	matches := regex.FindAllStringSubmatch(src, -1)
@@ -298,7 +298,6 @@ func AddMirrorObjects(libFolder string, targetName string, orca *pborca.Orca, wa
 // ChangePbdomBuildOptions adds pbdom to the build projects` build list.
 // It also removes the old pbdom from the list
 func ChangePbdomBuildOptions(projLibName string, projName string, pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)) error {
-
 	pblFile := filepath.Join(pbtData.BasePath, projLibName)
 	pbtFile := filepath.Join(pbtData.BasePath, pbtData.AppName+".pbt")
 
@@ -356,7 +355,7 @@ func FixProjLib(pbtFilePath, projName, oldLib, newLib string) error {
 	}
 	regr := regexp.MustCompile(`(?mi)(@begin Projects[^@]*?&` + projName + `&)` + oldLib + `(";[^@]*?@end;)`)
 	pbtData = regr.ReplaceAll(pbtData, []byte("${1}"+newLib+"${2}"))
-	err = os.WriteFile(pbtFilePath, pbtData, 0664)
+	err = os.WriteFile(pbtFilePath, pbtData, 0o664)
 	if err != nil {
 		return fmt.Errorf("FixProjLib failed: %v", err)
 	}
@@ -365,5 +364,5 @@ func FixProjLib(pbtFilePath, projName, oldLib, newLib string) error {
 
 // ReplacePayrollPbwFile replaces the pbwFile (to get rid of other targets)
 func ReplacePayrollPbwFile(pbwFilePath string) error {
-	return os.WriteFile(pbwFilePath, getPbFile("a3_lohn.pbw"), 0664)
+	return os.WriteFile(pbwFilePath, getPbFile("a3_lohn.pbw"), 0o664)
 }

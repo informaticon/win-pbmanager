@@ -22,8 +22,10 @@ var oldFiles string
 //go:embed uncommonFiles.txt
 var uncommonFiles string
 
-var urlPbdk = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdk@22.2.0-3356.zip"
-var urlPbdom = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdom@22.2.0-3356.pbl"
+var (
+	urlPbdk  = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdk@22.2.0-3356.zip"
+	urlPbdom = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdom@22.2.0-3356.pbl"
+)
 
 func RemoveFiles(folder string, warnFunc func(string)) error {
 	lines := strings.Split(string(oldFiles), "\r\n")
@@ -108,7 +110,7 @@ func FixPbInit(folder string, warnFunc func(string)) error {
 	}
 	src = append(src, valAccessibility[2]...)
 
-	err = os.WriteFile(file, src, 0664)
+	err = os.WriteFile(file, src, 0o664)
 	if err != nil {
 		return fmt.Errorf("FixPbInit failed: %v", err)
 	}
@@ -190,7 +192,7 @@ func InsertNewPbdom(pbt *orca.Pbt) error {
 	// add new pbdom
 	pbtData = regexp.MustCompile(`(?mi)^(LibList[ \t]+".*?)";`).ReplaceAll(pbtData, []byte(`$1;pbdom.pbl";`))
 
-	err = os.WriteFile(pbtFilePath, pbtData, 0664)
+	err = os.WriteFile(pbtFilePath, pbtData, 0o664)
 	if err != nil {
 		return fmt.Errorf("InsertNewPbdom failed: %v", err)
 	}
@@ -211,11 +213,11 @@ func InsertExfInPbt(pbt *orca.Pbt, Orca *pborca.Orca) error {
 		return nil
 	}
 	if !regexp.MustCompile("u_exf_error_manager[ \t]+gu_e").MatchString(src) {
-		//no exf needed
+		// no exf needed
 		return nil
 	}
 	if slices.Contains(pbt.LibList, filepath.Join(pbt.BasePath, "exf1.pbl")) {
-		//exf already in library list
+		// exf already in library list
 		return nil
 	}
 
@@ -231,7 +233,7 @@ func InsertExfInPbt(pbt *orca.Pbt, Orca *pborca.Orca) error {
 	// add new pbdom
 	pbtData = regexp.MustCompile(`(?mi)^(LibList[ \t]+".*?)(;inf3.pbl;.*?")`).ReplaceAll(pbtData, []byte(`${1};exf1.pbl${2}`))
 
-	err = os.WriteFile(filepath.Join(pbt.BasePath, pbt.AppName+".pbt"), pbtData, 0664)
+	err = os.WriteFile(filepath.Join(pbt.BasePath, pbt.AppName+".pbt"), pbtData, 0o664)
 	if err != nil {
 		return fmt.Errorf("InsertExfInPbt failed: %v", err)
 	}

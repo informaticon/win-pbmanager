@@ -32,14 +32,14 @@ func (l *Libs3rd) AddMissingLibs(pbtData *orca.Pbt) error {
 			switch file {
 			case "pbdom170.pbl", "pbdom115.pbl":
 				fmt.Printf("  add missing pbl %s\n", filepath.Base(lib))
-				err = os.WriteFile(lib, getPbFile(file), 0664)
+				err = os.WriteFile(lib, getPbFile(file), 0o664)
 			case "exf1.pbl", "grp1.pbl", "liq1.pbl",
 				"net1.pbl", "str1.pbl", "sfi2.pbl":
-				err = os.WriteFile(lib, getPbFile(file), 0664)
+				err = os.WriteFile(lib, getPbFile(file), 0o664)
 				fmt.Printf("  temporarly add missing pbl %s\n", filepath.Base(lib))
 				l.copiedFiles = append(l.copiedFiles, lib)
 			default:
-				err = os.WriteFile(lib, getPbFile("empty.pbl"), 0664)
+				err = os.WriteFile(lib, getPbFile("empty.pbl"), 0o664)
 				fmt.Printf("  temporarly add empty pbl %s to meet the requirements of the target\n", filepath.Base(lib))
 				l.copiedFiles = append(l.copiedFiles, lib)
 			}
@@ -52,6 +52,7 @@ func (l *Libs3rd) AddMissingLibs(pbtData *orca.Pbt) error {
 
 	return nil
 }
+
 func (l *Libs3rd) CleanupLibs() error {
 	for len(l.copiedFiles) > 0 {
 		err := os.Remove(l.copiedFiles[len(l.copiedFiles)-1])

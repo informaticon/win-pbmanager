@@ -42,7 +42,6 @@ func findPbtFilePath(basePath string, pbtFilePath string) (string, error) {
 }
 
 func isPblPbtFile(path string) bool {
-
 	if !utils.FileExists(path) {
 		return false
 	}
@@ -56,6 +55,7 @@ func isPblPbtFile(path string) bool {
 	}
 	return false
 }
+
 func getCleanPblPbtFilePath(basePath, path string) (string, error) {
 	path = filepath.Clean(path)
 	if !filepath.IsAbs(path) {
@@ -66,8 +66,8 @@ func getCleanPblPbtFilePath(basePath, path string) (string, error) {
 		return "", fmt.Errorf("file %s does not exist or is not a pbl file", path)
 	}
 	return path, nil
-
 }
+
 func isFile(path string) bool {
 	stat, err := os.Stat(path)
 	if err != nil {
@@ -97,5 +97,4 @@ func encode(str string, enc string) ([]byte, error) {
 		return encoder.NewEncoder().Bytes([]byte(str))
 	}
 	return nil, fmt.Errorf("unknown encoding %s", enc)
-
 }

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"golang.org/x/text/transform"
+
+	"golang.org/x/text/encoding/unicode"
 )
 
 func FileExists(filePath string) bool {
@@ -129,4 +134,39 @@ func GetCommonBaseDir(filePath1, filePath2 string) string {
 		return ""
 	}
 	return filepath.Join(components1[:i]...)
+}
+
+// ReadPbSource reads a PowerBuilder source file and returns it as UTF-8 string without BOM.
+// It always returns a UTF-8 string and ensures conversion if needed.
+// If there is no BOM, the function assumes that the file is UTF-8 encoded.
+func ReadPbSource(filePath string) (string, error) {
+	srcData, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	if bytes.HasPrefix(srcData, []byte("\xEF\xBB\xBF")) {
+		// remove UTF-8 prefix
+		srcData = srcData[3:]
+	} else if bytes.HasPrefix(srcData, []byte("\xFF\xFE")) {
+		// convert UTF-16LE to UTF-8
+		codec := unicode.UTF16(unicode.LittleEndian, unicode.UseBOM)
+		srcData, _, err = transform.Bytes(codec.NewDecoder(), srcData)
+		if err != nil {
+			return "", err
+		}
+	} else if bytes.HasPrefix(srcData, []byte("\xFE\xFF")) {
+		// convert UTF-16BE to UTF-8
+		codec := unicode.UTF16(unicode.BigEndian, unicode.UseBOM)
+		srcData, _, err = transform.Bytes(codec.NewDecoder(), srcData)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if bytes.HasPrefix(srcData, []byte("$PBExportHeader$")) {
+		return string(srcData), nil
+	} else {
+		return fmt.Sprintf("$PBExportHeader$%s\r\n", filepath.Base(filePath)) + string(srcData), nil
+	}
 }

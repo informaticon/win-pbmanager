@@ -21,7 +21,7 @@ var (
 
 // importCmd represents the import command
 var importCmd = &cobra.Command{
-	Use:   "import [options] <pbl path> [<src file path>|<src folder path>]",
+	Use:   "import [options] <pbl path> [<src file paths>...|<src folder paths>...]",
 	Short: "Imports one or multiple source files into a library",
 	Long: `To import a source file, pbmanager needs to know the PowerBuilder target (pbt-file).
 You can set the path to the target or let pbmanager try to find the target.
@@ -32,19 +32,19 @@ Examples:
 	- pbmanager import -b C:/a3/lib -t liq.pbt tst1.pbl src/w_main.srw
 	- pbmanager import -b C:/a3/lib tst1.pbl src/
 	- pbmanager import C:/a3/lib/liq.pbt C:/a3/lib/tst1.pbl C:/tst1_u_tst_main.sru
-	- pbmanager import my.pbt -p tst1,exf1,str1`,
-	Args: cobra.RangeArgs(1, 2),
+	- pbmanager import my.pbt -p tst1,exf1,str1 . C:/additional/src_folder C:/third/src`,
+	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		var pblSrcFilePath string
-		var srcPath string
+		var srcPaths []string
 
 		if len(pblList) == 0 {
 			// pbl import mode
 			if len(args) == 1 {
-				return fmt.Errorf("2 positional arguments needed, but got only 1")
+				return fmt.Errorf("at least 2 positional arguments needed, but got only 1")
 			}
 			pblSrcFilePath = args[0]
-			srcPath = args[1]
+			srcPaths = args[1:]
 			if !filepath.IsAbs(pblSrcFilePath) {
 				pblSrcFilePath = filepath.Join(basePath, pblSrcFilePath)
 			}
@@ -53,17 +53,17 @@ Examples:
 			}
 		} else {
 			// pbt import mode
-			if len(args) == 2 {
-				return fmt.Errorf("1 positional arguments needed, but got 2")
+			srcPaths = args[0:]
+		}
+		for i := range srcPaths {
+			if !filepath.IsAbs(srcPaths[i]) {
+				srcPaths[i] = filepath.Join(basePath, srcPaths[i])
 			}
-			srcPath = args[0]
+			if !utils.FileExists(srcPaths[i]) {
+				return fmt.Errorf("path %s does not exist", srcPaths[i])
+			}
 		}
-		if !filepath.IsAbs(srcPath) {
-			srcPath = filepath.Join(basePath, srcPath)
-		}
-		if !utils.FileExists(srcPath) {
-			return fmt.Errorf("path %s does not exist", srcPath)
-		}
+
 		pbtFilePath, err = findPbtFilePath(basePath, pbtFilePath)
 		if err != nil {
 			return err
@@ -82,39 +82,43 @@ Examples:
 			return err
 		}
 
-		if isFile(srcPath) {
+		if isFile(srcPaths[0]) {
 			// pbl import mode - single file
-			srcData, err := os.ReadFile(srcPath)
-			if err != nil {
-				return err
-			}
-			err = Orca.SetObjSource(pbtFilePath, pblSrcFilePath, filepath.Base(srcPath), string(srcData))
-			if err != nil {
-				return err
+			for _, srcPath := range srcPaths {
+				srcData, err := os.ReadFile(srcPath)
+				if err != nil {
+					return err
+				}
+				err = Orca.SetObjSource(pbtFilePath, pblSrcFilePath, filepath.Base(srcPath), string(srcData))
+				if err != nil {
+					return fmt.Errorf("could not import %s: %w", filepath.Base(srcPath), err)
+				}
 			}
 		} else if len(pblList) == 0 {
 			// pbl import mode - folder
 			errs := make(map[string]error)
-			err = filepath.WalkDir(srcPath, func(path string, d fs.DirEntry, err error) error {
-				if err != nil {
-					return err
-				}
-				if d.IsDir() {
+			for _, srcPath := range srcPaths {
+				err = filepath.WalkDir(srcPath, func(path string, d fs.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
+					if d.IsDir() {
+						return nil
+					}
+					srcData, err := utils.ReadPbSource(path)
+					if err != nil {
+						return err
+					}
+					objName := strings.TrimSuffix(filepath.Base(path), filepath.Ext(filepath.Base(path)))
+					err = Orca.SetObjSource(pbtFilePath, pblSrcFilePath, filepath.Base(objName), srcData)
+					if err != nil {
+						errs[objName] = err
+					}
 					return nil
-				}
-				srcData, err := utils.ReadPbSource(path)
+				})
 				if err != nil {
 					return err
 				}
-				objName := strings.TrimSuffix(filepath.Base(path), filepath.Ext(filepath.Base(path)))
-				err = Orca.SetObjSource(pbtFilePath, pblSrcFilePath, filepath.Base(objName), srcData)
-				if err != nil {
-					errs[objName] = err
-				}
-				return nil
-			})
-			if err != nil {
-				return err
 			}
 			if len(errs) > 0 {
 				fmt.Printf("compilation errors occured: %v\n", errs)
@@ -127,12 +131,20 @@ Examples:
 			}
 			var pblFilePaths, pblSrcFilePaths []string
 
-			for _, pbl := range pblList {
-				pblSrcFilePath = filepath.Join(srcPath, pbl+".pbl")
-				if !utils.FileExists(pblSrcFilePath) {
-					pblSrcFilePath = filepath.Join(srcPath, pbl+".pbl.src")
+			findPbl := func(pbl string) string {
+				for _, srcPath := range srcPaths {
+					if utils.FileExists(filepath.Join(srcPath, pbl+".pbl")) {
+						return filepath.Join(srcPath, pbl+".pbl")
+					}
+					if utils.FileExists(filepath.Join(srcPath, pbl+".pbl.src")) {
+						return filepath.Join(srcPath, pbl+".pbl.src")
+					}
 				}
-				if !utils.FileExists(pblSrcFilePath) {
+				return ""
+			}
+			for _, pbl := range pblList {
+				pblSrcFilePath := findPbl(pbl)
+				if pblSrcFilePath == "" {
 					return fmt.Errorf("could not find source folder for %s", pbl)
 				}
 				for _, pblPath := range pbtData.LibList {

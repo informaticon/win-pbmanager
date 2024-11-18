@@ -278,8 +278,8 @@ func applyPrePatches(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)
 	fmt.Println("PB115 pre migration finished")
 	return nil
 }
-func applyPostPatches(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 
+func applyPostPatches(pbtData *orca.Pbt, orca *pborca.Orca) (err error) {
 	if pbtData.AppName == "a3" {
 		// lohn has no registry object
 		err = migrate.FixRegistry(pbtData.BasePath, pbtData.AppName, orca, printWarn)

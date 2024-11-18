@@ -8,8 +8,10 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-var registerSvnDiff bool
-var registerSvnMerge bool
+var (
+	registerSvnDiff  bool
+	registerSvnMerge bool
+)
 
 // configCmd represents the build command
 var configCmd = &cobra.Command{

@@ -41,7 +41,7 @@ var deleteCmd = &cobra.Command{
 		if !filepath.IsAbs(pblFilePath) {
 			pblFilePath = filepath.Join(basePath, pblFilePath)
 		}
-		//check if provided pblFilePath exists and is allowed
+		// check if provided pblFilePath exists and is allowed
 		if !utils.FileExists(pblFilePath) || fileType != ".pbl" {
 			return fmt.Errorf("file %s does not exist or is not a pbl file", pblFilePath)
 		}
@@ -75,7 +75,7 @@ func init() {
 
 func deletePbl(Orca *pborca.Orca, pblFilePath string, objRegex *regexp.Regexp) error {
 	if ignoreMissing {
-		//outDir = filepath.Join(outDir, filepath.Base(pblFilePath))
+		// outDir = filepath.Join(outDir, filepath.Base(pblFilePath))
 	}
 
 	objs, err := Orca.GetObjList(pblFilePath)

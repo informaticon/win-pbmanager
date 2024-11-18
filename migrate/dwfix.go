@@ -72,8 +72,10 @@ func fixCheckboxAlignment(src string) (bool, string, string) {
 	return true, regexDwCheckBoxAlign.ReplaceAllString(src, `${1}0${2}`), "CheckboxAlign"
 }
 
-var regexDwHorizontalScollbar1 = regexp.MustCompile(`(?im)^(column.* height="(?:[0-7][0-2]|[0-6][0-9])".* edit.autohscroll=yes.* )edit.hscrollbar=yes `)
-var regexDwHorizontalScollbar2 = regexp.MustCompile(`(?im)^(column.* height="(?:[0-7][0-2]|[0-6][0-9])".* )edit.hscrollbar=yes `)
+var (
+	regexDwHorizontalScollbar1 = regexp.MustCompile(`(?im)^(column.* height="(?:[0-7][0-2]|[0-6][0-9])".* edit.autohscroll=yes.* )edit.hscrollbar=yes `)
+	regexDwHorizontalScollbar2 = regexp.MustCompile(`(?im)^(column.* height="(?:[0-7][0-2]|[0-6][0-9])".* )edit.hscrollbar=yes `)
+)
 
 func fixHorizontalScrollbar(src string) (bool, string, string) {
 	ret := false

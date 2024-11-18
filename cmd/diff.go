@@ -17,10 +17,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var mergeTool string
-var nameBase string
-var nameMine string
-var nameTheirs string
+var (
+	mergeTool  string
+	nameBase   string
+	nameMine   string
+	nameTheirs string
+)
 
 type exportJob struct {
 	libraryPath     string
@@ -94,17 +96,17 @@ var diffCmd = &cobra.Command{
 
 func diff(objFilePathBase, objFilePathMine string) error {
 	tempDir := filepath.Join(os.TempDir(), "pbdiff", time.Now().Format("20060102_150405"))
-	os.MkdirAll(tempDir, 0664)
+	os.MkdirAll(tempDir, 0o664)
 	defer os.RemoveAll(tempDir)
 	objSrcPathBase := filepath.Join(tempDir, fmt.Sprintf("%s (%s)", filepath.Base(objFilePathBase), getPblFileDescr(objFilePathBase)))
-	os.MkdirAll(objSrcPathBase, 0664)
+	os.MkdirAll(objSrcPathBase, 0o664)
 	objSrcPathMine := filepath.Join(tempDir, fmt.Sprintf("%s (%s)", filepath.Base(objFilePathMine), getPblFileDescr(objFilePathMine)))
-	os.MkdirAll(objSrcPathMine, 0664)
+	os.MkdirAll(objSrcPathMine, 0o664)
 
 	c := make(chan exportJob)
 
 	if filepath.Ext(objFilePathBase) == ".pbt" {
-		//producer for pbt
+		// producer for pbt
 		go func() {
 			pbt, _ := orca.NewPbtFromFile(objFilePathBase)
 			for _, lib := range pbt.LibList {
@@ -123,9 +125,8 @@ func diff(objFilePathBase, objFilePathMine string) error {
 			close(c)
 		}()
 	} else if filepath.Ext(objFilePathBase) == ".pbl" {
-		//producer for pbl
+		// producer for pbl
 		go func() {
-
 			var job exportJob
 			job.libraryPath = objFilePathBase
 			job.destinationPath = objSrcPathBase
@@ -139,7 +140,7 @@ func diff(objFilePathBase, objFilePathMine string) error {
 		}()
 	}
 
-	//consumer
+	// consumer
 	numOfConsumers := 4
 	var wg1 sync.WaitGroup
 	for i := 1; i <= numOfConsumers; i++ {
@@ -155,7 +156,6 @@ func diff(objFilePathBase, objFilePathMine string) error {
 				opts = append(opts, pborca.WithOrcaServer(orcaVars.serverAddr, orcaVars.serverApiKey))
 			}
 			Orca, err := pborca.NewOrca(orcaVars.pbVersion, opts...)
-
 			if err != nil {
 				panic(err)
 			}
@@ -318,6 +318,7 @@ func getDiffCommand(objSrcPathMine, objSrcPathBase, nameMine, nameBase string) *
 	}
 	return nil
 }
+
 func init() {
 	diffCmd.Flags().StringVar(&mergeTool, "diff-tool", "C:/Program Files/WinMerge/WinMergeU.exe", "Path to diff tool (WinMergeU.exe, code.exe or codium.exe).")
 	diffCmd.Flags().StringVar(&nameMine, "mine-name", "Mine", "Description in WinMerge for the mine file")
@@ -325,6 +326,7 @@ func init() {
 	diffCmd.Flags().StringVar(&nameTheirs, "theirs-name", "Theirs", "Description in WinMerge for the theirs file")
 	rootCmd.AddCommand(diffCmd)
 }
+
 func getPblFileDescr(pblFilePath string) string {
 	pblFilePath = filepath.Dir(pblFilePath)
 	pblFilePath = strings.ReplaceAll(pblFilePath, ":\\", "_")

@@ -35,7 +35,7 @@ var orcaVars struct {
 var basePath string
 
 func init() {
-	basePath, err := os.Getwd()
+	b, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
@@ -43,5 +43,5 @@ func init() {
 	rootCmd.PersistentFlags().UintVar(&orcaVars.timeoutSeconds, "orca-timeout", 7200, "Timeout (seconds) for PowerBuilder ORCA commands.")
 	rootCmd.PersistentFlags().StringVar(&orcaVars.serverAddr, "orca-server", "", "Orca server address to use. If not specified, a server will be started automatically.")
 	rootCmd.PersistentFlags().StringVar(&orcaVars.serverApiKey, "orca-apikey", "", "Orca server API key to use.")
-	rootCmd.PersistentFlags().StringVarP(&basePath, "base-path", "b", basePath, "Working directory to use. Needed if you want to provide relative paths. If omitted, pbmanager will choose the current working directory as base path.")
+	rootCmd.PersistentFlags().StringVarP(&basePath, "base-path", "b", b, "Working directory to use. Needed if you want to provide relative paths. If omitted, pbmanager will choose the current working directory as base path.")
 }

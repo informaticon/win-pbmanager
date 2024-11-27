@@ -333,12 +333,12 @@ func FixRuntimeFolder(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string
 		pblFile := filepath.Join(pbtData.BasePath, proj.PblFile)
 		src, err := orca.GetObjSource(pblFile, proj.Name+".srj")
 		if err != nil {
-			return fmt.Errorf("FixRuntimeFolder failed: %v", err)
+			return fmt.Errorf("FixRuntimeFolder failed while getting project source: %v", err)
 		}
 		src = regexp.MustCompile(`(?mi)^(EXE:.*?)[A-Z]:\\[^,\r\n]+[\r\n]+`).ReplaceAllString(src, "$1.\\pbdk\r\n")
 		err = orca.SetObjSource(pbtFile, pblFile, proj.Name, src)
 		if err != nil {
-			return fmt.Errorf("FixRuntimeFolder failed: %v", err)
+			return fmt.Errorf("FixRuntimeFolder failed while setting project source: %v", err)
 		}
 	}
 	return nil

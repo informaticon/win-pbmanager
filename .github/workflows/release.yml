@@ -10,20 +10,19 @@ on:
 
 jobs:
   createrelease:
-    runs-on: [self-hosted, high-performance]
+    runs-on: self-hosted
     env:
       GOPRIVATE: github.com/informaticon/*
-      GH_ACCESS_TOKEN: ${{ secrets.GH_PRIVATE_READ_PAT }}
 
     steps:
       # Depth = 0 needed to determine version
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
           
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: './go.mod'
     
@@ -39,7 +38,7 @@ jobs:
       # set manually a version with "custom_tag" (https://github.com/mathieudutour/github-tag-action)
       - name: Increase version and push tag
         id: tag_version
-        uses: mathieudutour/github-tag-action@v6.1
+        uses: mathieudutour/github-tag-action@a22cf08638b34d5badda920f9daf6e72c477b07b # v6.2
         with:
           github_token: ${{ github.token }} # need write permissions to tag repo
           default_bump: false
@@ -47,53 +46,21 @@ jobs:
           pre_release_branches: prerelease
           append_to_pre_release_tag: testrelease
 
-      - name: build executables
-        run: |
-          $Env:GOOS = "windows"; $Env:GOARCH = "amd64"; go build -o ./choco/tools/pbmanager.exe
-          
-
-      # windows executable using CC and https://codesigning.informaticon.com/
-      - name: sign
-        env:
-          CSB_AUTH_AUTHORIZATIONCODEFLOW: false
-          CSB_AUTH_CCSCOPES: svc.web.code-signing:access
-          CSB_AUTH_CLIENTID: ${{ secrets.CODESIGNING_CLIENT_ID }}
-          CSB_AUTH_CLIENTSECRET: ${{ secrets.CODESIGNING_CLIENT_SECRET }}
-        run: csb-cli ./choco/tools/pbmanager.exe --silent
-        shell: powershell
-        # USE powershell (desktop) and not default pwsh (core) to access csb.exe in PATH
-        # use csb-cli to avoid successful action run despite failure of code signing
-
-      # modified from https://www.sheldonhull.com/bump-nuspec-file-version-with-powershell/
-      - name: update version in .nuspec file
-        run: |
-          [xml]$xml = Get-Content -path ./choco/pbmanager.nuspec -Raw
-          $ns = [System.Xml.XmlNamespaceManager]::new($xml.NameTable)
-          $ns.AddNamespace('nuspec', 'http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd')
-          $xml.SelectSingleNode('/nuspec:package/nuspec:metadata/nuspec:version', $ns).InnerText = "${{ steps.tag_version.outputs.new_version }}"
-          $xml.Save("./choco/pbmanager.nuspec")
-
-      # only run it if new tag was created
-      - name: create choco package
-        if: ${{ steps.tag_version.outputs.release_type != '' }}
-        run: choco pack ./choco/pbmanager.nuspec --out ./choco/
-
-      # release uses new tag created above and appends executables and .nupkg to assets, changelog.md can be set as body
-      # only run it if new tag was created
-      - name: create release
-        if: ${{ steps.tag_version.outputs.release_type != '' }}
-        uses: softprops/action-gh-release@v1
-        id: create_release
+      - name: Choco release
+        uses: informaticon/dev.github.base.go-choco-release@v2
         with:
-          draft: false
-          prerelease: ${{ contains(fromJSON('["premajor", "preminor", "prepatch", "prerelease"]'),  steps.tag_version.outputs.release_type) }}
-          tag_name: ${{ steps.tag_version.outputs.new_tag }}
-          # use / as separator for windows paths!
-          files: |
+          build_cmd: |
+            $Env:GOOS = "windows"; $Env:GOARCH = "amd64"; go build -o ./choco/tools/pbmanager.exe
+          sign_cmd: |
+            csb-cli ./choco/tools/pbmanager.exe --silent
+          choco_pkg_name: pbmanager
+          path_to_nuspec: ./choco/
+          release_asset_files: |
             ./choco/pbmanager.exe
-            ./choco/axp.${{ steps.tag_version.outputs.new_version }}.nupkg
-
-      # only run it if new tag was created
-      - name: push choco package
-        if: ${{ steps.tag_version.outputs.release_type != '' }}
-        run: choco push ./choco/pbmanager.${{ steps.tag_version.outputs.new_version }}.nupkg --source ${{ vars.CHOCO_REGISTRY }} --api-key ${{ secrets.GITHUB_TOKEN }}
+          choco_api_key: ${{ secrets.GITHUB_TOKEN }}
+          codesigning_pfx: ${{ vars.CSB_SIGN_PFX }}
+          codesigning_pfx_passphrase: ${{ secrets.SRVBUILDXY_PRIVATE_KEY_PASSPHRASE }}
+          choco_registry: ${{ vars.CHOCO_REGISTRY }}
+          new_version: '${{ steps.tag_version.outputs.new_version }}'
+          release_type: '${{ steps.tag_version.outputs.release_type }}'
+          new_tag: '${{ steps.tag_version.outputs.new_tag }}'

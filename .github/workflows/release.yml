@@ -96,6 +96,4 @@ jobs:
       # only run it if new tag was created
       - name: push choco package
         if: ${{ steps.tag_version.outputs.release_type != '' }}
-        env:
-          CHOCO_API_KEY: ${{ secrets.CHOCO_WRITE_TOKEN }}
-        run: choco push ./choco/pbmanager.${{ steps.tag_version.outputs.new_version }}.nupkg --source ${{ vars.CHOCO_REGISTRY }} --api-key $env:CHOCO_API_KEY
+        run: choco push ./choco/pbmanager.${{ steps.tag_version.outputs.new_version }}.nupkg --source ${{ vars.CHOCO_REGISTRY }} --api-key ${{ secrets.GITHUB_TOKEN }}

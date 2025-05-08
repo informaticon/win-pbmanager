@@ -46,6 +46,9 @@ jobs:
           pre_release_branches: prerelease
           append_to_pre_release_tag: testrelease
 
+      - name: assign runner environment variable SRVBUILDXY_PFX_FILE to PFX_FILE specifing the pfx file on the runner 
+        run: echo "PFX_FILE=$env:SRVBUILDXY_PFX_FILE" >> $env:GITHUB_ENV
+
       - name: Choco release
         uses: informaticon/dev.github.base.go-choco-release@v2
         with:
@@ -58,7 +61,7 @@ jobs:
           release_asset_files: |
             ./choco/pbmanager.exe
           choco_api_key: ${{ secrets.GITHUB_TOKEN }}
-          codesigning_pfx: ${{ vars.CSB_SIGN_PFX }}
+          codesigning_pfx: ${{ env.PFX_FILE }}
           codesigning_pfx_passphrase: ${{ secrets.SRVBUILDXY_PRIVATE_KEY_PASSPHRASE }}
           choco_registry: ${{ vars.CHOCO_REGISTRY }}
           new_version: '${{ steps.tag_version.outputs.new_version }}'

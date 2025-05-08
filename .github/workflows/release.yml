@@ -39,7 +39,7 @@ jobs:
       # set manually a version with "custom_tag" (https://github.com/mathieudutour/github-tag-action)
       - name: Increase version and push tag
         id: tag_version
-        uses: mathieudutour/github-tag-action@v6.1
+        uses: mathieudutour/github-tag-action@a22cf08638b34d5badda920f9daf6e72c477b07b # v6.2
         with:
           github_token: ${{ github.token }} # need write permissions to tag repo
           default_bump: false
@@ -55,11 +55,10 @@ jobs:
       # windows executable using CC and https://codesigning.informaticon.com/
       - name: sign
         env:
+          CSB_SIGN_PFX: ${{ vars.SRVBUILDXY_PFX_FILE }}
+          CSB_SIGN_PFXPASSPHRASE: ${{ secrets.SRVBUILDXY_PRIVATE_KEY_PASSPHRASE }}
           CSB_AUTH_AUTHORIZATIONCODEFLOW: false
-          CSB_AUTH_CCSCOPES: svc.web.code-signing:access
-          CSB_AUTH_CLIENTID: ${{ secrets.CODESIGNING_CLIENT_ID }}
-          CSB_AUTH_CLIENTSECRET: ${{ secrets.CODESIGNING_CLIENT_SECRET }}
-        run: csb-cli ./choco/tools/pbmanager.exe --silent
+          run: csb-cli ./choco/tools/pbmanager.exe --silent
         shell: powershell
         # USE powershell (desktop) and not default pwsh (core) to access csb.exe in PATH
         # use csb-cli to avoid successful action run despite failure of code signing
@@ -82,7 +81,7 @@ jobs:
       # only run it if new tag was created
       - name: create release
         if: ${{ steps.tag_version.outputs.release_type != '' }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         id: create_release
         with:
           draft: false

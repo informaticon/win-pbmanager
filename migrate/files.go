@@ -23,8 +23,8 @@ var oldFiles string
 var uncommonFiles string
 
 var (
-	urlPbdk  = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdk@22.2.0-3356.zip"
-	urlPbdom = "https://choco.informaticon.com/endpoints/axp/content/lib.bin.base.pbdom@22.2.0-3356.pbl"
+	urlPbdk  = "https://artifactory.informaticon.com/artifactory/assets-pub/lib.bin.base.pbdk@22.2.0-3356.zip"
+	urlPbdom = "https://artifactory.informaticon.com/artifactory/assets-pub/lib.bin.base.pbdom@22.2.0-3356.pbl"
 )
 
 func RemoveFiles(folder string, warnFunc func(string)) error {

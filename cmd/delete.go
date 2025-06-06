@@ -50,6 +50,9 @@ var deleteCmd = &cobra.Command{
 			return fmt.Errorf("currently, only PowerBuilder 22 is supported")
 		}
 		var opts []func(*pborca.Orca)
+		if orcaVars.pbRuntimeFolder != "" {
+			opts = append(opts, pborca.WithOrcaRuntime(orcaVars.pbRuntimeFolder))
+		}
 		opts = append(opts, pborca.WithOrcaTimeout(time.Duration(orcaVars.timeoutSeconds)*time.Second))
 		if orcaVars.serverAddr != "" {
 			opts = append(opts, pborca.WithOrcaServer(orcaVars.serverAddr, orcaVars.serverApiKey))

@@ -48,6 +48,9 @@ var diffCmd = &cobra.Command{
 			return err
 		}
 		var opts []func(*pborca.Orca)
+		if orcaVars.pbRuntimeFolder != "" {
+			opts = append(opts, pborca.WithOrcaRuntime(orcaVars.pbRuntimeFolder))
+		}
 		opts = append(opts, pborca.WithOrcaTimeout(time.Duration(orcaVars.timeoutSeconds)*time.Second))
 		opts = append(opts, pborca.WithMessageCallback(func(level uint32, msg string) {
 			log.Printf("%d: %s\n", level, msg)

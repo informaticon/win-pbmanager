@@ -36,6 +36,9 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 		}
 
 		var opts []func(*pborca.Orca)
+		if orcaVars.pbRuntimeFolder != "" {
+			opts = append(opts, pborca.WithOrcaRuntime(orcaVars.pbRuntimeFolder))
+		}
 		opts = append(opts, pborca.WithOrcaTimeout(time.Duration(orcaVars.timeoutSeconds)*time.Second))
 		if orcaVars.serverAddr != "" {
 			opts = append(opts, pborca.WithOrcaServer(orcaVars.serverAddr, orcaVars.serverApiKey))

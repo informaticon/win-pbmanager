@@ -27,10 +27,11 @@ func Execute() {
 }
 
 var orcaVars struct {
-	pbVersion      int
-	timeoutSeconds uint
-	serverAddr     string
-	serverApiKey   string
+	pbVersion       int
+	pbRuntimeFolder string
+	timeoutSeconds  uint
+	serverAddr      string
+	serverApiKey    string
 }
 var basePath string
 
@@ -40,6 +41,7 @@ func init() {
 		panic(err)
 	}
 	rootCmd.PersistentFlags().IntVar(&orcaVars.pbVersion, "orca-version", 22, "PowerBuilder version to use (only 22 works atm).")
+	rootCmd.PersistentFlags().StringVar(&orcaVars.pbRuntimeFolder, "orca-runtime", "", "PowerBuilder runtime folder to use (pbmanager will search the runtime folder automatically if not set).")
 	rootCmd.PersistentFlags().UintVar(&orcaVars.timeoutSeconds, "orca-timeout", 7200, "Timeout (seconds) for PowerBuilder ORCA commands.")
 	rootCmd.PersistentFlags().StringVar(&orcaVars.serverAddr, "orca-server", "", "Orca server address to use. If not specified, a server will be started automatically.")
 	rootCmd.PersistentFlags().StringVar(&orcaVars.serverApiKey, "orca-apikey", "", "Orca server API key to use.")

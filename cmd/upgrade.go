@@ -263,7 +263,7 @@ func applyPrePatches(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)
 
 	warnFunc("Start PB115 pre migration")
 	src = regex.ReplaceAllString(src, `${1}CI${2}`)
-	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	err = orca.SetObjSource(pbtFile, pblFile, objName, []byte(src))
 	if err != nil {
 		fmt.Printf("info: SetObjSource for preMigration of PB115 failed, this can be ignored (%v)\n", err)
 	}
@@ -273,7 +273,7 @@ func applyPrePatches(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string)
 		return
 	}
 
-	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	err = orca.SetObjSource(pbtFile, pblFile, objName, []byte(src))
 	if err != nil {
 		return
 	}

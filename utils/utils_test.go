@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 )
@@ -12,12 +13,12 @@ func TestGetCommonBaseDir(t *testing.T) {
 func TestReadPbSrc(t *testing.T) {
 	cases := []struct {
 		file     string
-		expected string
+		expected []byte
 	}{
-		{file: "testdata/utf8.txt", expected: "$PBExportHeader$utf8.txt\r\nHello World"},
-		{file: "testdata/utf8bom.txt", expected: "$PBExportHeader$utf8bom.txt\r\nHello World"},
-		{file: "testdata/utf16le.txt", expected: "$PBExportHeader$utf16le.txt\r\nHello World"},
-		{file: "testdata/utf16be.txt", expected: "$PBExportHeader$utf16be.txt\r\nHello World"},
+		{file: "testdata/utf8.txt", expected: []byte("$PBExportHeader$utf8.txt\r\nHello World")},
+		{file: "testdata/utf8bom.txt", expected: []byte("$PBExportHeader$utf8bom.txt\r\nHello World")},
+		{file: "testdata/utf16le.txt", expected: []byte("$PBExportHeader$utf16le.txt\r\nHello World")},
+		{file: "testdata/utf16be.txt", expected: []byte("$PBExportHeader$utf16be.txt\r\nHello World")},
 	}
 	for _, cas := range cases {
 		got, err := ReadPbSource(cas.file)
@@ -25,7 +26,7 @@ func TestReadPbSrc(t *testing.T) {
 			t.Error(err)
 			continue
 		}
-		if got != cas.expected {
+		if !bytes.Equal(got, cas.expected) {
 			t.Errorf("%s content is wrong. Expected: %s, Got: %s", cas.file, cas.expected, got)
 		}
 	}

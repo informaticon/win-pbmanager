@@ -33,7 +33,7 @@ func FixArf(libFolder string, targetName string, orca *pborca.Orca, warnFunc fun
 	}
 	src = regex.ReplaceAllString(src, `${1}/*COMMENTED OUT BY PB2022R3 MIGRATION: ${2}*/`)
 
-	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	err = orca.SetObjSource(pbtFile, pblFile, objName, []byte(src))
 	if err != nil {
 		return fmt.Errorf("FixArf failed: %v", err)
 	}
@@ -66,7 +66,7 @@ func FixRegistry(libFolder string, targetName string, orca *pborca.Orca, warnFun
 	}
 	src = regex.ReplaceAllString(src, `string is_ie_ole_exes[] = {"a3.exe", "pb170.exe", "pb220.exe", "pb250.exe"}`)
 
-	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	err = orca.SetObjSource(pbtFile, pblFile, objName, []byte(src))
 	if err != nil {
 		return fmt.Errorf("FixRegistry failed: %v", err)
 	}
@@ -94,7 +94,7 @@ func FixHttpClient(libFolder string, targetName string, orca *pborca.Orca, warnF
 
 		src = regex.ReplaceAllString(src, `${1}${2}lu_client.anonymousaccess = true${2}${3}`)
 
-		err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+		err = orca.SetObjSource(pbtFile, pblFile, objName, []byte(src))
 		if err != nil {
 			return fmt.Errorf("FixHttpClient failed for %s: %v", objName, err)
 		}
@@ -122,7 +122,7 @@ func FixHttpClient(libFolder string, targetName string, orca *pborca.Orca, warnF
 
 		regex = regexp.MustCompile(`(?mi)(end forward[\r\n\t ]+global type inf1_u_httpclient from httpclient[ \t]+)`)
 		src = regex.ReplaceAllString(src, `${1}\r\nboolean anonymousaccess = true`)
-		err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+		err = orca.SetObjSource(pbtFile, pblFile, objName, []byte(src))
 		if err != nil {
 			return fmt.Errorf("FixHttpClient failed for %s: %v", objName, err)
 		}
@@ -166,7 +166,7 @@ func FixLifProcess(libFolder string, targetName string, orca *pborca.Orca, warnF
 	}
 
 	src = regex.ReplaceAllString(src, `	if lower(ls_exe) = "pb170.exe" or lower(ls_exe) = "pb220.exe" or lower(ls_exe) = "pb250.exe" then`)
-	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	err = orca.SetObjSource(pbtFile, pblFile, objName, []byte(src))
 	if err != nil {
 		return fmt.Errorf("FixLifProcess failed: %v", err)
 	}
@@ -196,7 +196,7 @@ func FixLifMetratec(libFolder string, targetName string, orca *pborca.Orca, warn
 	}
 
 	src = regex.ReplaceAllString(src, `${1}CI${2}`)
-	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	err = orca.SetObjSource(pbtFile, pblFile, objName, []byte(src))
 	if err != nil && !ignoreCompileErr {
 		return fmt.Errorf("FixLifMetratec failed: %v", err)
 	}
@@ -224,7 +224,7 @@ func FixPayrollXmlDecl(libFolder string, targetName string, orca *pborca.Orca, w
 		src = regex1.ReplaceAllString(src, `ipbdom_document.setxmldeclaration("1.0", "UTF-8", "yes")`)
 		src = regex2.ReplaceAllString(src, ``)
 
-		err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+		err = orca.SetObjSource(pbtFile, pblFile, objName, []byte(src))
 		if err != nil {
 			return fmt.Errorf("FixLohXmlDecl failed on %s: %v", objName, err)
 		}
@@ -256,7 +256,7 @@ if upperbound(lpd_obj) >= 1 then
 	end if
 end if
 `)
-	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	err = orca.SetObjSource(pbtFile, pblFile, objName, []byte(src))
 	if err != nil {
 		return fmt.Errorf("FixPayrollXmlEncoding failed on %s: %v", objName, err)
 	}
@@ -287,7 +287,7 @@ func AddMirrorObjects(libFolder string, targetName string, orca *pborca.Orca, wa
 			warnFunc(fmt.Sprintf("skipping import of mirror object %s, it already exists", objName))
 			continue
 		}
-		err = orca.SetObjSource(pbtFile, pblFile, objName, string(objSrc))
+		err = orca.SetObjSource(pbtFile, pblFile, objName, objSrc)
 		if err != nil {
 			return fmt.Errorf("AddMirrorObjects failed: %v", err)
 		}
@@ -315,7 +315,7 @@ func ChangePbdomBuildOptions(projLibName string, projName string, pbtData *orca.
 	}
 
 	src = regex.ReplaceAllString(src, `PBD:pbdom.pbl,,1`)
-	err = orca.SetObjSource(pbtFile, pblFile, objName, src)
+	err = orca.SetObjSource(pbtFile, pblFile, objName, []byte(src))
 	if err != nil {
 		return fmt.Errorf("ChangePbdomBuildOptions failed: %v", err)
 	}
@@ -336,7 +336,7 @@ func FixRuntimeFolder(pbtData *orca.Pbt, orca *pborca.Orca, warnFunc func(string
 			return fmt.Errorf("FixRuntimeFolder failed while getting project source: %v", err)
 		}
 		src = regexp.MustCompile(`(?mi)^(EXE:.*?)[A-Z]:\\[^,\r\n]+[\r\n]+`).ReplaceAllString(src, "$1.\\pbdk\r\n")
-		err = orca.SetObjSource(pbtFile, pblFile, proj.Name, src)
+		err = orca.SetObjSource(pbtFile, pblFile, proj.Name, []byte(src))
 		if err != nil {
 			return fmt.Errorf("FixRuntimeFolder failed while setting project source: %v", err)
 		}

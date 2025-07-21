@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/informaticon/dev.win.base.pbmanager/internal/importer"
 	"github.com/informaticon/dev.win.base.pbmanager/utils"
 	pborca "github.com/informaticon/lib.go.base.pborca"
 	"github.com/informaticon/lib.go.base.pborca/orca"
@@ -92,7 +93,7 @@ Examples:
 				if err != nil {
 					return err
 				}
-				err = Orca.SetObjSource(pbtFilePath, pblSrcFilePath, filepath.Base(srcPath), string(srcData))
+				err = Orca.SetObjSource(pbtFilePath, pblSrcFilePath, filepath.Base(srcPath), srcData)
 				if err != nil {
 					return fmt.Errorf("could not import %s: %w", filepath.Base(srcPath), err)
 				}
@@ -157,7 +158,10 @@ Examples:
 					}
 				}
 			}
-			err = multiImport(pbtFilePath, pblFilePaths, pblSrcFilePaths, Orca)
+			m := importer.NewMultiImport(pbtFilePath, pblFilePaths, pblSrcFilePaths,
+				importer.WithNumberWorkers(1),
+				importer.WithOrcaOpts(opts))
+			err = m.Import()
 			if err != nil {
 				return err
 			}
@@ -172,57 +176,4 @@ func init() {
 	importCmd.Flags().StringVarP(&pbtFilePath, "target", "t", "", "Target file to use (e.g. C:/a3/lib/a3.pbt). If omitted, pbmanagers tries to find the appropriate taget automatically.")
 	importCmd.Flags().StringSliceVarP(&pblList, "pbl-list", "p", pblList, "List of pbl to import (try multiple times until there is no compilation error.")
 	rootCmd.AddCommand(importCmd)
-}
-
-// multiImport tries to import into multiple pbls.
-// It tries to do it multiple time so it also works if cirtcular depenencies.
-func multiImport(pbtFilePath string, pblFilePaths, pblSrcFilePaths []string, Orca *pborca.Orca) error {
-	minRun := 3
-	curRun := 0
-	maxRun := len(pblFilePaths) * 3
-	lastErrCount := 5000
-
-	for {
-		curRun++
-		errs := make(map[string]error)
-		for i, pblFilePath := range pblFilePaths {
-			err := filepath.WalkDir(pblSrcFilePaths[i], func(path string, d fs.DirEntry, err error) error {
-				if err != nil {
-					return err
-				}
-				if d.IsDir() {
-					return nil
-				}
-				srcData, err := utils.ReadPbSource(path)
-				if err != nil {
-					return err
-				}
-				objName := strings.TrimSuffix(filepath.Base(path), filepath.Ext(filepath.Base(path)))
-
-				err = Orca.SetObjSource(pbtFilePath, pblFilePath, filepath.Base(objName), srcData)
-				if err != nil {
-					errs[objName] = err
-				}
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-
-		if len(errs) == 0 {
-			return nil
-		}
-		if len(errs) >= lastErrCount && curRun > minRun {
-			return fmt.Errorf("compilation errors occured (multiple tries did not help): %v", errs)
-		}
-		if len(errs) > 0 && curRun >= maxRun {
-			return fmt.Errorf("compilation errors occured: %v", errs)
-		}
-
-		lastErrCount = len(errs)
-		pblSrcFilePaths = append(pblSrcFilePaths[1:], pblSrcFilePaths[0])
-		pblFilePaths = append(pblFilePaths[1:], pblFilePaths[0])
-		fmt.Printf("Got %d errors in run %d. Retry...\n", len(errs), curRun)
-	}
 }

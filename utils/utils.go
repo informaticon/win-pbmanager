@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"golang.org/x/text/transform"
 
@@ -139,10 +141,10 @@ func GetCommonBaseDir(filePath1, filePath2 string) string {
 // ReadPbSource reads a PowerBuilder source file and returns it as UTF-8 string without BOM.
 // It always returns a UTF-8 string and ensures conversion if needed.
 // If there is no BOM, the function assumes that the file is UTF-8 encoded.
-func ReadPbSource(filePath string) (string, error) {
+func ReadPbSource(filePath string) ([]byte, error) {
 	srcData, err := os.ReadFile(filePath)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if bytes.HasPrefix(srcData, []byte("\xEF\xBB\xBF")) {
@@ -153,20 +155,42 @@ func ReadPbSource(filePath string) (string, error) {
 		codec := unicode.UTF16(unicode.LittleEndian, unicode.UseBOM)
 		srcData, _, err = transform.Bytes(codec.NewDecoder(), srcData)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	} else if bytes.HasPrefix(srcData, []byte("\xFE\xFF")) {
 		// convert UTF-16BE to UTF-8
 		codec := unicode.UTF16(unicode.BigEndian, unicode.UseBOM)
 		srcData, _, err = transform.Bytes(codec.NewDecoder(), srcData)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
 	if bytes.HasPrefix(srcData, []byte("$PBExportHeader$")) {
-		return string(srcData), nil
+		isValid := utf8.Valid(srcData)
+		if !isValid {
+			log.Fatal("invalid UTF8 ", filePath)
+		}
+		return srcData, nil
 	} else {
-		return fmt.Sprintf("$PBExportHeader$%s\r\n", filepath.Base(filePath)) + string(srcData), nil
+		if filepath.Ext(filePath) == ".bin" {
+			fmt.Println("do not set $PBExportHeader$ initial line for", filepath.Base(filePath))
+			return srcData, nil
+		}
+		return append([]byte("$PBExportHeader$"+filepath.Base(filePath)+"\r\n"), srcData...), nil
 	}
+}
+
+func ImmediateSubDirs(path string) ([]string, error) {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+	var subdirs []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			subdirs = append(subdirs, entry.Name())
+		}
+	}
+	return subdirs, nil
 }

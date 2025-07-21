@@ -49,7 +49,7 @@ func FixDatawindows(pbtData *orca.Pbt, o *pborca.Orca, fncs []func(string) (bool
 				}
 				if msgs != "" {
 					fmt.Printf("Fix Dw %s because of %s\n", obj.Name, msgs)
-					err = o.SetObjSource(pbtData.GetPath(), pbl, obj.Name, src)
+					err = o.SetObjSource(pbtData.GetPath(), pbl, obj.Name, []byte(src))
 					if err != nil {
 						errs = append(errs, fmt.Sprintf("could not write source of %s in %s: %v", obj.Name, pbl, err))
 					}

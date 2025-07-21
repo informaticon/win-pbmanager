@@ -14,7 +14,7 @@ import (
 
 // backportCmd represents the conversion back from solution to workspace
 var backportCmd = &cobra.Command{
-	Use:   "backport <some.pbsln | some.pbproj> [options]",
+	Use:   "backport <some.pbsln | some.pbproj> [options] ",
 	Short: "performs the conversion back from solution or project to workspace or target",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {

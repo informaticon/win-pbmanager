@@ -149,6 +149,7 @@ func (m *MultiImport) worker(id int, pblInstanceChan chan pblInstance) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer orcaServer.Close()
 
 	for item := range pblInstanceChan {
 		if m.processPbl(item, orcaServer) {

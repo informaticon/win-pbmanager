@@ -85,6 +85,7 @@ Examples:
 		if err != nil {
 			return err
 		}
+		defer Orca.Close()
 
 		if isFile(srcPaths[0]) {
 			// pbl import mode - single file

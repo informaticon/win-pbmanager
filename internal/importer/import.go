@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,7 +36,8 @@ type MultiImport struct {
 }
 
 func NewMultiImport(pbtFilePath string, pblFilePaths, pblSrcFilePaths []string,
-	options ...func(*MultiImport)) *MultiImport {
+	options ...func(*MultiImport),
+) *MultiImport {
 	var runningWorkers int32 = 0
 	m := &MultiImport{
 		backportDir:           "workspace",
@@ -149,7 +151,11 @@ func (m *MultiImport) worker(id int, pblInstanceChan chan pblInstance) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer orcaServer.Close()
+	defer func() {
+		slog.Info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+		orcaServer.Close()
+		time.Sleep(1 * time.Second)
+	}()
 
 	for item := range pblInstanceChan {
 		if m.processPbl(item, orcaServer) {
@@ -184,7 +190,7 @@ func (m *MultiImport) processPbl(item pblInstance, orcaServer *pborca.Orca) (exi
 	}
 
 	// get all .bin files, might be several; key filename, val index
-	var binFiles = make(map[string]int)
+	binFiles := make(map[string]int)
 	for i, file := range files {
 		if filepath.Ext(file) == ".bin" {
 			binFiles[strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))] = i
@@ -209,7 +215,7 @@ var pbdomPbl []byte // can't be imported by source; TODO: another pbdom.pbl for 
 // handlePbDom writes an embedded pbdom.pbl instead of importing since it comes from pbdk pbni extension.
 func (m *MultiImport) handlePbDom(pblFilePath string) {
 	fmt.Println("use embedded pbdom.pbl, skip source import")
-	err := os.WriteFile(pblFilePath, pbdomPbl, 0644)
+	err := os.WriteFile(pblFilePath, pbdomPbl, 0o644)
 	if err != nil {
 		log.Fatal(err) // it is expected to work
 	}
@@ -287,14 +293,14 @@ func writeStageResultTemp(pblFilepath string, srcData []byte) {
 	fmt.Printf("write %s and source after import operation into separate copy %s\n",
 		filepath.Base(pblFilepath), tempDir)
 	// SOURCE file
-	errTemp = os.WriteFile(filepath.Join(tempDir, filepath.Base(pblFilepath)+"_source"), srcData, 0644)
+	errTemp = os.WriteFile(filepath.Join(tempDir, filepath.Base(pblFilepath)+"_source"), srcData, 0o644)
 	if errTemp != nil {
 		log.Println(errTemp)
 	}
 	// PBL
 	pblAfterImportStep, errTemp := os.ReadFile(pblFilepath)
 	errTemp = os.WriteFile(filepath.Join(tempDir, filepath.Base(pblFilepath)+"_imported"),
-		pblAfterImportStep, 0644)
+		pblAfterImportStep, 0o644)
 	if errTemp != nil {
 		log.Println(errTemp)
 	}

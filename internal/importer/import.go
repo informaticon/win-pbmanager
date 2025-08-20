@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -151,11 +150,7 @@ func (m *MultiImport) worker(id int, pblInstanceChan chan pblInstance) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func() {
-		slog.Info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-		orcaServer.Close()
-		time.Sleep(1 * time.Second)
-	}()
+	defer orcaServer.Close()
 
 	for item := range pblInstanceChan {
 		if m.processPbl(item, orcaServer) {

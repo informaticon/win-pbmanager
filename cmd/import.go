@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -69,6 +70,7 @@ Examples:
 		if err != nil {
 			return err
 		}
+		slog.Info(fmt.Sprintf("using pbt %s", pbtFilePath))
 
 		if orcaVars.pbVersion != 22 {
 			return fmt.Errorf("currently, only PowerBuilder 22 is supported")

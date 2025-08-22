@@ -3,8 +3,15 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 
+	logging "github.com/informaticon/lib.go.base.logging"
+	"github.com/informaticon/lib.go.base.logging/filter/level"
+	"github.com/informaticon/lib.go.base.logging/rule"
+	"github.com/informaticon/lib.go.base.logging/sender/eventlog"
+	"github.com/informaticon/lib.go.base.logging/sender/std"
+	"github.com/informaticon/lib.go.base.logging/transformer/pretty"
 	"github.com/spf13/cobra"
 )
 
@@ -34,6 +41,30 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	var logMinSeverity slog.Level
+	switch flagLogLevel {
+	case "debug":
+		logMinSeverity = slog.LevelDebug
+	case "info":
+		logMinSeverity = slog.LevelInfo
+	case "warn":
+		logMinSeverity = slog.LevelWarn
+	case "error":
+		logMinSeverity = slog.LevelError
+	default:
+		fmt.Printf("invalid log level: %s\n", flagLogLevel)
+		os.Exit(2)
+	}
+
+	slog.SetDefault(slog.New(logging.New(nil,
+		rule.New().
+			Transform(pretty.New()).
+			Filter(level.New(level.WithMin(logMinSeverity))).
+			Send(std.New()),
+		rule.New().
+			Filter(level.New(level.WithMin(logMinSeverity))).
+			Send(eventlog.New("dev.win.base.pbmanager", eventlog.WithExternal())),
+	)))
 	err := rootCmd.Execute()
 	if err != nil {
 		fmt.Println(err)
@@ -48,7 +79,10 @@ var orcaVars struct {
 	serverAddr      string
 	serverApiKey    string
 }
-var basePath string
+var (
+	basePath     string
+	flagLogLevel string
+)
 
 func init() {
 	b, err := os.Getwd()
@@ -61,6 +95,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&orcaVars.serverAddr, "orca-server", "", "Orca server address to use. If not specified, a server will be started automatically.")
 	rootCmd.PersistentFlags().StringVar(&orcaVars.serverApiKey, "orca-apikey", "", "Orca server API key to use.")
 	rootCmd.PersistentFlags().StringVarP(&basePath, "base-path", "b", b, "Working directory to use. Needed if you want to provide relative paths. If omitted, pbmanager will choose the current working directory as base path.")
+	rootCmd.PersistentFlags().StringVar(&flagLogLevel, "log-level", "warn", "Minimum log level to print. [debug, info, warn, error]")
 	rootCmd.Flags().Bool("version", false, "Print pbmanager version")
 }
 

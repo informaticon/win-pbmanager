@@ -161,10 +161,7 @@ Examples:
 					}
 				}
 			}
-			m := importer.NewMultiImport(pbtFilePath, pblFilePaths, pblSrcFilePaths,
-				importer.WithNumberWorkers(1),
-				importer.WithOrcaOpts(opts))
-			err = m.Import()
+			err = importer.Import(Orca, pbtFilePath, srcPaths, pblFilePaths)
 			if err != nil {
 				return err
 			}

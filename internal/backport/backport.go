@@ -3,18 +3,21 @@
 package backport
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
+	"strings"
 
 	"github.com/informaticon/dev.win.base.pbmanager/internal/importer"
-	"github.com/informaticon/dev.win.base.pbmanager/utils"
+	pborca "github.com/informaticon/lib.go.base.pborca"
+	"github.com/informaticon/lib.go.base.pborca/pbtemplates"
 )
 
 const workspaceDir = "workspace"
 
 // ConvertProjectToTarget modifies src files referenced by .pbproj directory and converts the project back to target.
-func ConvertProjectToTarget(pbProjFile string, opts []func(*importer.MultiImport)) error {
+func ConvertProjectToTarget(Orca *pborca.Orca, pbProjFile string) error {
 	rules := []FileRule{
 		{Matcher: matchExt(".srd"), Handler: handleSrdFile},
 		{Matcher: matchExt(".sra"), Handler: handleSraFile},
@@ -23,86 +26,67 @@ func ConvertProjectToTarget(pbProjFile string, opts []func(*importer.MultiImport
 	if err != nil {
 		return err
 	}
-	p := &Project{
-		Path:     filepath.Base(pbProjFile),
-		BasePath: filepath.Dir(pbProjFile),
+	pbProj, err := NewProject(pbProjFile)
+	if err != nil {
+		return err
 	}
-	return p.ConvertToTarget(opts)
-}
+	workDir := filepath.Join(filepath.Dir(pbProjFile), workspaceDir)
+	err = os.MkdirAll(workDir, 0o755)
+	if err != nil {
+		return err
+	}
 
-// ConvertSolutionToWorkspace modifies src files within .pbsln directory and converts the solution back to workspace.
-func ConvertSolutionToWorkspace(slnFile string, opts []func(*importer.MultiImport)) error {
-	rules := []FileRule{
-		{Matcher: matchExt(".srd"), Handler: handleSrdFile},
-		{Matcher: matchExt(".sra"), Handler: handleSraFile},
+	// Create pbt file
+	pbtFilePath := filepath.Join(workDir, pbProj.Application.Name+".pbt")
+	err = os.WriteFile(pbtFilePath,
+		NewTarget(pbProj.Application.Name, pbProj.Libraries.AppEntry, pbProj.Libraries.GetPblPaths()).ToBytes(),
+		0o644)
+	if err != nil {
+		return fmt.Errorf("failed to write actual application target %s: %v", pbtFilePath, err)
 	}
-	err := ConvertSrcDirs([]string{filepath.Dir(slnFile)}, rules)
-	s, err := NewSolution(slnFile)
+	// Create main pbl file (needed, because Orca only works if application is already compilable)
+	err = createMainPblFromPbProj(Orca, pbProj, workDir)
 	if err != nil {
 		return err
 	}
-	err = s.ConvertToWorkspace(opts)
-	if err != nil {
-		return err
-	}
-	return copyAssetsToWorkspace(slnFile)
-}
 
-// copyAssetsToWorkspace copies assets from solution to workspace so that it can be fully used, e.g. dlls, test files...
-func copyAssetsToWorkspace(slnFile string) error {
-	subDirs, err := utils.ImmediateSubDirs(filepath.Dir(slnFile))
-	if err != nil {
-		return err
-	}
-	for _, subDir := range subDirs {
-		err = copyDir(filepath.Join(filepath.Dir(slnFile), subDir),
-			filepath.Join(filepath.Dir(slnFile), workspaceDir, subDir), defaultIgnoreFunc)
+	// first are directories named equally to the files listed
+	srcDirs, pblFiles := []string{}, []string{}
+	for i, lib := range pbProj.Libraries.GetPblPaths() {
+		srcDirs = append(srcDirs, filepath.Join(filepath.Dir(pbProjFile), lib))
+		pblFiles = append(pblFiles, filepath.Join(workDir, lib))
+		// application PBL was already created separately
+		if strings.Contains(lib, pbProj.Libraries.AppEntry) {
+			continue
+		}
+		err = os.MkdirAll(filepath.Dir(pblFiles[i]), 0o644)
 		if err != nil {
 			return err
 		}
+		if _, err := os.Stat(pblFiles[i]); errors.Is(err, os.ErrNotExist) {
+			errWrite := os.WriteFile(pblFiles[i], pbtemplates.GetEmptyPbl(), 0o644)
+			if errWrite != nil {
+				return fmt.Errorf("failed to write empty PBL %s: %v", pblFiles[i], errWrite)
+			}
+		}
+	}
+
+	// have all ingredients, can start to import actual source
+	err = importer.Import(Orca, pbtFilePath, srcDirs, pblFiles)
+	if err != nil {
+		return fmt.Errorf("failed to multi-import into PBLs at %s: %v", workDir, err)
 	}
 	return nil
 }
 
-// IgnoreFunc defines the signature for custom ignore logic.
-// Return true to ignore (skip) the path, false to include it.
-type IgnoreFunc func(d os.DirEntry) bool
-
-// copyDir copies the contents of srcDir to dstDir, using the provided ignore function.
-func copyDir(srcDir, dstDir string, ignore IgnoreFunc) error {
-	return filepath.WalkDir(srcDir, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		relPath, err := filepath.Rel(srcDir, path)
-		if err != nil {
-			return err
-		}
-		targetPath := filepath.Join(dstDir, relPath)
-
-		if ignore != nil && ignore(d) {
-			if d.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if d.IsDir() {
-			return os.MkdirAll(targetPath, 0755)
-		}
-		return utils.CopyFile(path, targetPath)
-	})
-}
-
-var regDirIgnore = regexp.MustCompile(`.*\.pbl|.pb|build|_BackupFiles|workspace`)
-var regFileIgnore = regexp.MustCompile(`.pbproj|.pbl|.pbsln|.opt`)
-
-// ignoreFunc copies back all defined exceptions for directories and
-func defaultIgnoreFunc(d os.DirEntry) bool {
-	if d.IsDir() && regDirIgnore.MatchString(d.Name()) {
-		return true
+func createMainPblFromPbProj(Orca *pborca.Orca, pbProj *PbProject, workDir string) error {
+	pblSrc, err := Orca.CreateApplicationPbl(pbProj.Application.Name, pbtemplates.GenerateSra(pbProj.Application.Name))
+	if err != nil {
+		return fmt.Errorf("failed to obtain minimal application PBL: %v", err)
 	}
-	if !d.IsDir() && regFileIgnore.MatchString(d.Name()) {
-		return true
+	err = os.WriteFile(filepath.Join(workDir, pbProj.Libraries.AppEntry), pblSrc, 0o644)
+	if err != nil {
+		return fmt.Errorf("failed to obtain minimal application PBL: %v", err)
 	}
-	return false
+	return nil
 }

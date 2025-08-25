@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/informaticon/dev.win.base.pbmanager/internal/importer"
 )
 
 type PbProject struct { // avoid collision with pbsln Project xml entry
@@ -14,7 +12,7 @@ type PbProject struct { // avoid collision with pbsln Project xml entry
 	Type        Type
 	Application Application // e.g. <Application Name="a3"/>
 	Libraries   Libraries
-	Opts        []func(*importer.MultiImport)
+	filePath    string // filepath of PbProject file
 }
 
 type Type struct {
@@ -44,20 +42,25 @@ type Library struct {
 	Path string `xml:"Path,attr"` // e.g. <Library Path="lto2.pbl"/>
 }
 
-func NewProject(pbProjFile string, opts []func(*importer.MultiImport)) (*PbProject, error) {
+func NewProject(pbProjFile string) (*PbProject, error) {
 	data, err := os.ReadFile(pbProjFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read project file %s: %v", pbProjFile, err)
 	}
 	p := &PbProject{}
 	err = xml.Unmarshal(data, p)
+	p.filePath = pbProjFile
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal project file to structure %s: %v", pbProjFile, err)
 	}
-	p.Opts = opts
 	return p, nil
 }
 
 func (p *PbProject) String() string {
 	return p.Application.Name
+}
+
+// GetAppFilePath returns absolute filepath to the main sra file
+func (p *PbProject) GetAppFilePath() string {
+	return filepath.Join(filepath.Dir(p.filePath), p.Libraries.AppEntry, p.Application.Name+".sra")
 }

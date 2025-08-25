@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/informaticon/dev.win.base.pbmanager/internal/backport"
-	"github.com/informaticon/dev.win.base.pbmanager/internal/importer"
 	pborca "github.com/informaticon/lib.go.base.pborca"
 	"github.com/spf13/cobra"
 )
@@ -21,11 +20,11 @@ var backportCmd = &cobra.Command{
 		if _, err := os.Stat(args[0]); err != nil {
 			return fmt.Errorf("no .pbsln or .pbproj file was provided: %v", err)
 		}
-		absoluteSolOrProjPath, err := filepath.Abs(args[0])
+		absoluteProjPath, err := filepath.Abs(args[0])
 		if err != nil {
 			return err
 		}
-		if filepath.Ext(absoluteSolOrProjPath) != ".pbproj" && filepath.Ext(absoluteSolOrProjPath) != ".pbsln" {
+		if filepath.Ext(absoluteProjPath) != ".pbproj" {
 			return fmt.Errorf("no .pbsln or .pbproj file was provided: %v", err)
 		}
 		if orcaVars.pbVersion != 22 {
@@ -39,20 +38,20 @@ var backportCmd = &cobra.Command{
 		if orcaVars.serverAddr != "" {
 			opts = append(opts, pborca.WithOrcaServer(orcaVars.serverAddr, orcaVars.serverApiKey))
 		}
-		var importerOpts []func(*importer.MultiImport)
-		importerOpts = append(importerOpts, importer.WithOrcaOpts(opts))
-		importerOpts = append(importerOpts, importer.WithNumberWorkers(numberWorkers))
-		importerOpts = append(importerOpts, importer.WithMinIterations(minIterations))
-		if filepath.Ext(absoluteSolOrProjPath) == ".pbsln" {
-			return backport.ConvertSolutionToWorkspace(absoluteSolOrProjPath, importerOpts)
-		} else {
-			return backport.ConvertProjectToTarget(absoluteSolOrProjPath, importerOpts)
+		Orca, err := pborca.NewOrca(orcaVars.pbVersion, opts...)
+		if err != nil {
+			return err
 		}
+		defer Orca.Close()
+
+		return backport.ConvertProjectToTarget(Orca, absoluteProjPath)
 	},
 }
 
-var numberWorkers int
-var minIterations int
+var (
+	numberWorkers int
+	minIterations int
+)
 
 func init() {
 	rootCmd.AddCommand(backportCmd)

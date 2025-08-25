@@ -80,6 +80,12 @@ func handleSraFile(filename string, content []byte) ([]byte, error) {
 	if !bytes.Contains(content, []byte("string appruntimeversion = \"22.2.0.3356\"")) {
 		fmt.Printf("Modify currently set appruntimeversion within %s to 22.2.0.3356\n", filename)
 	}
+	if bytes.HasPrefix(content, []byte("//objectcomments ")) {
+		content = append([]byte("$PBExportComments$"), bytes.TrimPrefix(content, []byte("//objectcomments "))...)
+	}
+	if !bytes.HasPrefix(content, []byte("$PBExportHeader$")) {
+		content = append([]byte("$PBExportHeader$"+filepath.Base(filename)+"\r\n"), content...)
+	}
 	return regexReplaceRuntime.ReplaceAll(content, []byte("string appruntimeversion = \"22.2.0.3356\"\n")), nil
 }
 

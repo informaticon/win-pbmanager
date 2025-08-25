@@ -6,7 +6,7 @@ toolchain go1.24.6
 
 require (
 	github.com/informaticon/lib.go.base.logging v1.0.3
-	github.com/informaticon/lib.go.base.pborca v0.3.0
+	github.com/informaticon/lib.go.base.pborca v0.5.0
 	github.com/spf13/cobra v1.9.1
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
 	golang.org/x/sys v0.35.0

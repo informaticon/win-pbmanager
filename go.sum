@@ -19,6 +19,12 @@ github.com/informaticon/lib.go.base.logging v1.0.3 h1:umfTrO9GKKehC2IWGnG0cOuXor
 github.com/informaticon/lib.go.base.logging v1.0.3/go.mod h1:V6+TIukApSrCsVfERGw9jwcOG+bAkD/7BYYc4ZjkkYA=
 github.com/informaticon/lib.go.base.pborca v0.3.0 h1:2Zw5v2SWTLjqWe3UjWeiU5JfxfqI2DWdAA6lCIpNbWQ=
 github.com/informaticon/lib.go.base.pborca v0.3.0/go.mod h1:OTG6qPJxjkFCim79p4bc4GYT4XPD8jRLjA3igqRqBTg=
+github.com/informaticon/lib.go.base.pborca v0.4.0 h1:6vXIKHvTn133xJBDGHaDRX0UE7ED/lSfS2+XQp+lzl0=
+github.com/informaticon/lib.go.base.pborca v0.4.0/go.mod h1:OTG6qPJxjkFCim79p4bc4GYT4XPD8jRLjA3igqRqBTg=
+github.com/informaticon/lib.go.base.pborca v0.4.1 h1:oRC6q2be3EI59k4ew1WrjTCSUmLWvKGiFTXxn+J/MyQ=
+github.com/informaticon/lib.go.base.pborca v0.4.1/go.mod h1:OTG6qPJxjkFCim79p4bc4GYT4XPD8jRLjA3igqRqBTg=
+github.com/informaticon/lib.go.base.pborca v0.5.0 h1:7sjE2iTexeF/ac5MfZGmfoeQboJJCxnoHaf+8H5Y1bQ=
+github.com/informaticon/lib.go.base.pborca v0.5.0/go.mod h1:OTG6qPJxjkFCim79p4bc4GYT4XPD8jRLjA3igqRqBTg=
 github.com/lmittmann/tint v1.1.0 h1:0hDmvuGv3U+Cep/jHpPxwjrCFjT6syam7iY7nTmA7ug=
 github.com/lmittmann/tint v1.1.0/go.mod h1:HIS3gSy7qNwGCj+5oRjAutErFBl4BzdQP6cJZ0NfMwE=
 github.com/lmittmann/tint v1.1.2 h1:2CQzrL6rslrsyjqLDwD11bZ5OpLBPU+g3G/r5LSfS8w=

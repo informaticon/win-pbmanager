@@ -30,33 +30,31 @@ func ConvertProjectToTarget(Orca *pborca.Orca, pbProjFile string) error {
 	if err != nil {
 		return err
 	}
-	workDir := filepath.Join(filepath.Dir(pbProjFile), workspaceDir)
-	err = os.MkdirAll(workDir, 0o755)
-	if err != nil {
-		return err
-	}
 
 	// Create pbt file
-	pbtFilePath := filepath.Join(workDir, pbProj.Application.Name+".pbt")
+	pbtFilePath := filepath.Join(filepath.Dir(pbProjFile), strings.TrimSuffix(filepath.Base(pbProjFile), ".pbproj")+".pbt")
 	err = os.WriteFile(pbtFilePath,
 		NewTarget(pbProj.Application.Name, pbProj.Libraries.AppEntry, pbProj.Libraries.GetPblPaths()).ToBytes(),
 		0o644)
 	if err != nil {
 		return fmt.Errorf("failed to write actual application target %s: %v", pbtFilePath, err)
 	}
-	// Create main pbl file (needed, because Orca only works if application is already compilable)
-	err = createMainPblFromPbProj(Orca, pbProj, workDir)
-	if err != nil {
-		return err
-	}
 
-	// first are directories named equally to the files listed
+	// get list of src dirs and resulting pbl files
 	srcDirs, pblFiles := []string{}, []string{}
 	for i, lib := range pbProj.Libraries.GetPblPaths() {
-		srcDirs = append(srcDirs, filepath.Join(filepath.Dir(pbProjFile), lib))
-		pblFiles = append(pblFiles, filepath.Join(workDir, lib))
-		// application PBL was already created separately
-		if strings.Contains(lib, pbProj.Libraries.AppEntry) {
+		pblFile := filepath.Join(filepath.Dir(pbProjFile), lib)
+		srcDir := pblFile + ".old"
+		os.Rename(pblFile, srcDir)
+		srcDirs = append(srcDirs, srcDir)
+		pblFiles = append(pblFiles, pblFile)
+
+		if strings.Contains(filepath.Clean(lib), filepath.Clean(pbProj.Libraries.AppEntry)) {
+			// Create main pbl file (needed, because Orca only works if application is already compilable)
+			err = createMainPblFromPbProj(Orca, pbProj, filepath.Dir(pbProjFile))
+			if err != nil {
+				return err
+			}
 			continue
 		}
 		err = os.MkdirAll(filepath.Dir(pblFiles[i]), 0o644)
@@ -74,7 +72,7 @@ func ConvertProjectToTarget(Orca *pborca.Orca, pbProjFile string) error {
 	// have all ingredients, can start to import actual source
 	err = importer.Import(Orca, pbtFilePath, srcDirs, pblFiles)
 	if err != nil {
-		return fmt.Errorf("failed to multi-import into PBLs at %s: %v", workDir, err)
+		return fmt.Errorf("failed to multi-import into PBLs at %s: %v", filepath.Dir(pbProjFile), err)
 	}
 	return nil
 }

@@ -2,6 +2,7 @@ package backport
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -27,6 +28,10 @@ func (t Target) ToBytes() []byte {
 appname "%s";
 applib "%s";
 liblist "%s";
-type "pb";`, t.AppName, t.AppLib, strings.Join(t.LibList, ";"))
+type "pb";`,
+		t.AppName,
+		strings.ReplaceAll(filepath.ToSlash(t.AppLib), "/", "\\\\"),
+		strings.ReplaceAll(strings.ReplaceAll(strings.Join(t.LibList, ";"), "\\", "/"), "/", "\\\\"),
+	)
 	return []byte(targetString)
 }

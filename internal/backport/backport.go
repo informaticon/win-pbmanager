@@ -14,8 +14,6 @@ import (
 	"github.com/informaticon/lib.go.base.pborca/pbtemplates"
 )
 
-const workspaceDir = "workspace"
-
 // ConvertProjectToTarget modifies src files referenced by .pbproj directory and converts the project back to target.
 func ConvertProjectToTarget(Orca *pborca.Orca, pbProjFile string) error {
 	rules := []FileRule{

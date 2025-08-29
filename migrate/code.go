@@ -13,6 +13,87 @@ import (
 	"github.com/informaticon/lib.go.base.pborca/orca"
 )
 
+// FixSqla17ByteString replaces all occurrances of byte_substr with substr
+func FixSqla17ByteString(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
+	pbtFile := filepath.Join(libFolder, targetName+".pbt")
+	regex := regexp.MustCompile(`(?is)([^a-z])byte_substr\(`)
+	var fixedObjNames []string
+	pblFiles, err := filepath.Glob(filepath.Join(libFolder, "*.pbl"))
+	if err != nil {
+		return fmt.Errorf("could not create list of pbl files for folder %s: %v", libFolder, err)
+	}
+	for _, pblFile := range pblFiles {
+		objArrs, err := orca.GetObjList(pblFile)
+		if err != nil {
+			return fmt.Errorf("could not create list of objects for pbl %s: %v", pblFile, err)
+		}
+
+		for _, objArr := range objArrs {
+			for _, obj := range objArr.GetObjArr() {
+				objSrc, err := orca.GetObjSource(pblFile, obj.Name+pborca.GetObjSuffixFromType(obj.ObjType))
+				if err != nil {
+					return fmt.Errorf("could not get soure for object %s: %v", obj.Name+pborca.GetObjSuffixFromType(obj.ObjType), err)
+				}
+				if strings.Contains(objSrc, "byte_substr") {
+					newObjSrc := regex.ReplaceAllString(objSrc, "${1}substr(")
+					if newObjSrc == objSrc {
+						warnFunc(fmt.Sprintf("found byte_substr pattern in %s but regex did not match it", obj.Name))
+						continue
+					}
+					fixedObjNames = append(fixedObjNames, obj.Name)
+					err = orca.SetObjSource(pbtFile, pblFile, obj.Name, []byte(newObjSrc))
+					if err != nil {
+						return fmt.Errorf("could not set source for object %s: %v", obj.Name, err)
+					}
+				}
+			}
+		}
+	}
+	fmt.Printf("FixSqla17 fixed %d objects: %v\n", len(fixedObjNames), fixedObjNames)
+	return nil
+}
+
+func FixSqla17Base(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
+	pbtFile := filepath.Join(libFolder, targetName+".pbt")
+	fixes := []struct {
+		fixName string
+		pblFile string
+		objName string
+		regex   *regexp.Regexp
+		replace string
+	}{
+		{
+			"FIX1", "inf1.pbl", "inf1_u_transaction.sru",
+			regexp.MustCompile(`(?is)[\r\n](\/\/Version[\n\r\t ]+ls_version[\t =]+of_get_version\(\).*?end if)`),
+			"\r\n//SQLA17 migration: deactivate driver check\r\n/*\r\n${1}\r\n*/",
+		},
+		{
+			"FIX2", "inf1.pbl", "inf1_u_transaction.sru",
+			regexp.MustCompile(`(?is)(([ \t]+if left\(ls_version,[ \t=]+2\)[ \t=]+'(11|16)'.*?[\r\n]+)+)`),
+			"\r\n\t//SQLA17 migration: allow sqla17 driver\r\n\t/*\r\n${1}\t*/\r\n\tchoose case left(of_get_version(), 2)\r\n\t\tcase '11' //SQLA11\r\n\t\t\tas_db += \";commlinks=tcpip{host=\" + string(ls_host) + \"}\"\r\n\t\tcase else //SQLA16, SQLA17, ...\r\n\t\t\tas_db += \";host=\" + ls_host\r\n\tend choose\r\n",
+		},
+		{
+			"FIX3", "inf1.pbl", "inf1_u_transaction.sru",
+			regexp.MustCompile(`(?is)(public[ \t]+subroutine[ \t]+of_check_version[a-z_ \t()]+;)(.*?)([\r\n]+end[ t]+subroutine[\r\n]+)`),
+			"${1}//SQLA17 migration: deactivate db version check\r\n/*OLD SOURCE HAS BEEN REMOVED*/\r\nlong ll_fun_exists\r\nstring ls_error\r\nselect count(*) into :ll_fun_exists from sysprocedure where proc_name = 'dev_check_sqla_versions';\r\nif ll_fun_exists = 0 then\r\n\t// function dev_check_sqla_versions does not exist, continue without db version check\r\n\treturn\r\nend if\r\n\r\nselect dev_check_sqla_versions() into :ls_error from dummy;\r\nif ls_error = '' then\r\n\treturn\r\nend if\r\n\r\nthrow(gu_e.iu_as.of_re_database(gu_e.of_new_error().of_push(populateerror(0, ls_error)).of_push('this', this)))${3}",
+		},
+	}
+	for _, fix := range fixes {
+		src, err := orca.GetObjSource(filepath.Join(libFolder, fix.pblFile), fix.objName)
+		if err != nil {
+			warnFunc(fmt.Sprintf("skipping fix %s, file %s does not contain an object named %s: %v", fix.fixName, fix.pblFile, fix.objName, err))
+			continue
+		}
+		src = fix.regex.ReplaceAllString(src, fix.replace)
+		err = orca.SetObjSource(pbtFile, filepath.Join(libFolder, fix.pblFile), fix.objName, []byte(src))
+		if err != nil {
+			return fmt.Errorf("fix %s for %s failed, could not write source: %v", fix.fixName, fix.objName, err)
+		}
+
+	}
+	return nil
+}
+
 func FixArf(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
 	pblFile := filepath.Join(libFolder, "arf1.pbl")
 	pbtFile := filepath.Join(libFolder, targetName+".pbt")

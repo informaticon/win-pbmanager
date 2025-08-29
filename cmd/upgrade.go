@@ -71,7 +71,7 @@ You have to specify the path to the PowerBuilder target (e.g. C:/a3/lib/a3.pbt).
 }
 
 func init() {
-	upgradeCmd.Flags().String("mode", "full", "one of [full|patches|FixArf|FixFinDw], (full=upgrade with patches, patches=only patches, others: fix a particular bug)")
+	upgradeCmd.Flags().String("mode", "full", "one of [full|patches|FixArf|FixFinDw|FixSqla17], (full=upgrade with patches, patches=only patches, others: fix a particular bug)")
 	upgradeCmd.Flags().Bool("remove-exe", false, "remove existing target exe after migration")
 	rootCmd.AddCommand(upgradeCmd)
 }
@@ -98,7 +98,9 @@ func doPatch(pbtData *orca.Pbt, patchType string, pbVersion int, options ...func
 		return err
 	}
 	defer orca.Close()
-
+	if strings.ToLower(patchType) == "fixsqla17" {
+		return migrate.FixSqla17ByteString(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+	}
 	if strings.ToLower(patchType) == "fixarf" {
 		return migrate.FixArf(pbtData.BasePath, pbtData.AppName, orca, printWarn)
 	}

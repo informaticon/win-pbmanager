@@ -49,33 +49,44 @@ func FixSqla17ByteString(libFolder string, targetName string, orca *pborca.Orca,
 			}
 		}
 	}
-	fmt.Printf("FixSqla17 fixed %d objects: %v\n", len(fixedObjNames), fixedObjNames)
+	fmt.Printf("FixSqla17ByteString fixed %d objects: %v\n", len(fixedObjNames), fixedObjNames)
 	return nil
 }
 
+// FixSqla17Base replaces SQLA17 checks in base layer of A3.
 func FixSqla17Base(libFolder string, targetName string, orca *pborca.Orca, warnFunc func(string)) error {
 	pbtFile := filepath.Join(libFolder, targetName+".pbt")
 	fixes := []struct {
 		fixName string
 		pblFile string
 		objName string
-		regex   *regexp.Regexp
+		rxCheck *regexp.Regexp // if true, the fix has already been applied
+		rxRepl  *regexp.Regexp
 		replace string
 	}{
 		{
-			"FIX1", "inf1.pbl", "inf1_u_transaction.sru",
+			"FIX1", "inf1.pbl", "inf1_u_transaction",
+			regexp.MustCompile(`(?is)//SQLA17 migration - FIX1:`),
 			regexp.MustCompile(`(?is)[\r\n](\/\/Version[\n\r\t ]+ls_version[\t =]+of_get_version\(\).*?end if)`),
-			"\r\n//SQLA17 migration: deactivate driver check\r\n/*\r\n${1}\r\n*/",
+			"\r\n//SQLA17 migration - FIX1: deactivate driver check\r\n/*\r\n${1}\r\n*/",
 		},
 		{
-			"FIX2", "inf1.pbl", "inf1_u_transaction.sru",
+			"FIX2", "inf1.pbl", "inf1_u_transaction",
+			regexp.MustCompile(`(?is)//SQLA17 migration - FIX2:`),
 			regexp.MustCompile(`(?is)(([ \t]+if left\(ls_version,[ \t=]+2\)[ \t=]+'(11|16)'.*?[\r\n]+)+)`),
-			"\r\n\t//SQLA17 migration: allow sqla17 driver\r\n\t/*\r\n${1}\t*/\r\n\tchoose case left(of_get_version(), 2)\r\n\t\tcase '11' //SQLA11\r\n\t\t\tas_db += \";commlinks=tcpip{host=\" + string(ls_host) + \"}\"\r\n\t\tcase else //SQLA16, SQLA17, ...\r\n\t\t\tas_db += \";host=\" + ls_host\r\n\tend choose\r\n",
+			"\r\n\t//SQLA17 migration - FIX2: allow sqla17 driver\r\n\t/*\r\n${1}\t*/\r\n\tchoose case left(of_get_version(), 2)\r\n\t\tcase '11' //SQLA11\r\n\t\t\tas_db += \";commlinks=tcpip{host=\" + string(ls_host) + \"}\"\r\n\t\tcase else //SQLA16, SQLA17, ...\r\n\t\t\tas_db += \";host=\" + ls_host\r\n\tend choose\r\n",
 		},
 		{
-			"FIX3", "inf1.pbl", "inf1_u_transaction.sru",
-			regexp.MustCompile(`(?is)(public[ \t]+subroutine[ \t]+of_check_version[a-z_ \t()]+;)(.*?)([\r\n]+end[ t]+subroutine[\r\n]+)`),
-			"${1}//SQLA17 migration: deactivate db version check\r\n/*OLD SOURCE HAS BEEN REMOVED*/\r\nlong ll_fun_exists\r\nstring ls_error\r\nselect count(*) into :ll_fun_exists from sysprocedure where proc_name = 'dev_check_sqla_versions';\r\nif ll_fun_exists = 0 then\r\n\t// function dev_check_sqla_versions does not exist, continue without db version check\r\n\treturn\r\nend if\r\n\r\nselect dev_check_sqla_versions() into :ls_error from dummy;\r\nif ls_error = '' then\r\n\treturn\r\nend if\r\n\r\nthrow(gu_e.iu_as.of_re_database(gu_e.of_new_error().of_push(populateerror(0, ls_error)).of_push('this', this)))${3}",
+			"FIX3", "inf1.pbl", "inf1_u_transaction",
+			regexp.MustCompile(`(?is)//SQLA17 migration - FIX3:`),
+			regexp.MustCompile(`(?is)(public[ \t]+(?:subroutine|function)[^;\r\n]*?of_check_version[ \t]*[^;\r\n]+;)(.*?)(return 1)*([\t \r\n]+end[ t]+(?:subroutine|function)[\r\n]+)`),
+			"${1}//SQLA17 migration - FIX3: switch to new version check\r\n\r\n/*OLD SOURCE HAS BEEN REMOVED*/\r\n\r\nlong ll_fun_exists\r\nstring ls_error\r\nselect count(*) into :ll_fun_exists from sysprocedure where proc_name = 'dev_check_sqla_versions';\r\n// if function dev_check_sqla_versions does not exist, continue without db version check\r\nif ll_fun_exists > 0 then\r\n\tselect dev_check_sqla_versions() into :ls_error from dummy;\r\n\tif ls_error <> '' then\r\n\t\tthrow(gu_e.iu_as.of_re_database(gu_e.of_new_error().of_push(populateerror(0, ls_error)).of_push('this', this)))\r\n\tend if\r\nend if\r\n\r\n${3}${4}",
+		},
+		{
+			"FIX4", "jif1.pbl", "jif1_u_jif_master",
+			regexp.MustCompile(`(?is)//SQLA17 migration - FIX4:`),
+			regexp.MustCompile(`(?is)(choose[ \t]+case[ \t]+ls_sa_major_version[ \t\r\n]+case[ \t]+)"[,"167 ]+"([ \t\r\n]+)`),
+			"//SQLA17 migration - FIX4: allow SQLA17\r\n${1}'11', '16', '17'${2}",
 		},
 	}
 	for _, fix := range fixes {
@@ -84,13 +95,18 @@ func FixSqla17Base(libFolder string, targetName string, orca *pborca.Orca, warnF
 			warnFunc(fmt.Sprintf("skipping fix %s, file %s does not contain an object named %s: %v", fix.fixName, fix.pblFile, fix.objName, err))
 			continue
 		}
-		src = fix.regex.ReplaceAllString(src, fix.replace)
+		if fix.rxCheck.MatchString(src) {
+			warnFunc(fmt.Sprintf("skipping fix %s as it already has been applied", fix.fixName))
+			continue
+		}
+		src = fix.rxRepl.ReplaceAllString(src, fix.replace)
 		err = orca.SetObjSource(pbtFile, filepath.Join(libFolder, fix.pblFile), fix.objName, []byte(src))
 		if err != nil {
 			return fmt.Errorf("fix %s for %s failed, could not write source: %v", fix.fixName, fix.objName, err)
 		}
 
 	}
+	fmt.Printf("FixSqla17Base applied all necessary fixes\n")
 	return nil
 }
 

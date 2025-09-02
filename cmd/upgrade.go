@@ -98,14 +98,18 @@ func doPatch(pbtData *orca.Pbt, patchType string, pbVersion int, options ...func
 		return err
 	}
 	defer orca.Close()
-	if strings.ToLower(patchType) == "fixsqla17" {
-		return migrate.FixSqla17ByteString(pbtData.BasePath, pbtData.AppName, orca, printWarn)
-	}
-	if strings.ToLower(patchType) == "fixarf" {
-		return migrate.FixArf(pbtData.BasePath, pbtData.AppName, orca, printWarn)
-	}
 
 	switch strings.ToLower(patchType) {
+	case "fixsqla17":
+		err = migrate.FixSqla17Base(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+		if err != nil {
+			return err
+		}
+		err = migrate.FixSqla17ByteString(pbtData.BasePath, pbtData.AppName, orca, printWarn)
+		if err != nil {
+			return err
+		}
+		return nil
 	case "fixarf":
 		return migrate.FixArf(pbtData.BasePath, pbtData.AppName, orca, printWarn)
 	case "fixfindw":

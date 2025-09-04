@@ -13,19 +13,19 @@ import (
 
 // backportCmd represents the conversion back from solution to workspace
 var backportCmd = &cobra.Command{
-	Use:   "backport <some.pbsln | some.pbproj> [options] ",
-	Short: "performs the conversion back from solution or project to workspace or target",
+	Use:   "backport <some.pbproj> [options] ",
+	Short: "performs the conversion back from PB project to target",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if _, err := os.Stat(args[0]); err != nil {
-			return fmt.Errorf("no .pbsln or .pbproj file was provided: %v", err)
+			return fmt.Errorf("no .pbproj file was provided: %v", err)
 		}
 		absoluteProjPath, err := filepath.Abs(args[0])
 		if err != nil {
 			return err
 		}
 		if filepath.Ext(absoluteProjPath) != ".pbproj" {
-			return fmt.Errorf("no .pbsln or .pbproj file was provided: %v", err)
+			return fmt.Errorf("no .pbproj file was provided: %v", err)
 		}
 		if orcaVars.pbVersion != 22 {
 			return fmt.Errorf("currently, only PowerBuilder 22 is supported")
@@ -48,15 +48,9 @@ var backportCmd = &cobra.Command{
 	},
 }
 
-var (
-	numberWorkers int
-	minIterations int
-)
+var minIterations int
 
 func init() {
 	rootCmd.AddCommand(backportCmd)
-	backportCmd.Flags().IntVarP(&numberWorkers, "workers", "w", 1,
-		"number of parallel processed PBL sources / imports.")
-	backportCmd.Flags().IntVar(&minIterations, "min-iter", 15, "number of iterations "+
-		"through all PBL sources when errors occur.")
+	backportCmd.Flags().IntVar(&minIterations, "min-iter", 15, "number of iterations through all PBL sources when errors occur.")
 }

@@ -53,7 +53,6 @@ jobs:
         uses: informaticon/dev.github.base.go-choco-release@v2
         with:
           build_cmd: |
-            $(shell pwsh -NoProfile -NonInteractive -Command "(Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz')")
             $Env:GOOS = "windows"; $Env:GOARCH = "amd64"; go build -o ./choco/tools/pbmanager.exe -ldflags "-X 'github.com/informaticon/dev.win.base.pbmanager/cmd.Version=${{ steps.tag_version.outputs.new_version }}' -X 'github.com/informaticon/dev.win.base.pbmanager/cmd.BuildTime=$(Get-Date -Format "yyyy-MM-ddTHH:mm:sszzz")'"
           sign_cmd: |
             csb-cli ./choco/tools/pbmanager.exe --silent

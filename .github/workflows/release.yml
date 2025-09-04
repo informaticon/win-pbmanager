@@ -45,7 +45,7 @@ jobs:
           default_prerelease_bump: prerelease
           pre_release_branches: prerelease
           append_to_pre_release_tag: testrelease
-
+        
       - name: assign runner environment variable SRVBUILDXY_PFX_FILE to PFX_FILE specifing the pfx file on the runner 
         run: echo "PFX_FILE=$env:SRVBUILDXY_PFX_FILE" >> $env:GITHUB_ENV
 
@@ -53,7 +53,8 @@ jobs:
         uses: informaticon/dev.github.base.go-choco-release@v2
         with:
           build_cmd: |
-            $Env:GOOS = "windows"; $Env:GOARCH = "amd64"; go build -o ./choco/tools/pbmanager.exe
+            $(shell pwsh -NoProfile -NonInteractive -Command "(Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz')")
+            $Env:GOOS = "windows"; $Env:GOARCH = "amd64"; go build -o ./choco/tools/pbmanager.exe -ldflags "-X 'github.com/informaticon/dev.win.base.pbmanager/cmd.Version=${{ steps.tag_version.outputs.new_version }}' -X 'github.com/informaticon/dev.win.base.pbmanager/cmd.BuildTime=$(Get-Date -Format "yyyy-MM-ddTHH:mm:sszzz")'"
           sign_cmd: |
             csb-cli ./choco/tools/pbmanager.exe --silent
           choco_pkg_name: pbmanager

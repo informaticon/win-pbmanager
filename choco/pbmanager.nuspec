@@ -37,6 +37,7 @@ Also offers functions for exporting and importing source code and for comparing 
     </releaseNotes>
     <dependencies>
       <dependency id="powerbuilder-runtime" />
+      <dependency id="winmerge" />
     </dependencies>
   </metadata>
   <files>

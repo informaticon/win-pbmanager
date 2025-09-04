@@ -67,7 +67,7 @@ func FixSqla17Base(libFolder string, targetName string, orca *pborca.Orca, warnF
 		{
 			"FIX1", "inf1.pbl", "inf1_u_transaction",
 			regexp.MustCompile(`(?is)//SQLA17 migration - FIX1:`),
-			regexp.MustCompile(`(?is)[\r\n](\/\/Version[\n\r\t ]+ls_version[\t =]+of_get_version\(\).*?end if)`),
+			regexp.MustCompile(`(?is)[\r\n]+(\/\/Version[\n\r\t ]+ls_version[\t =]+of_get_version\(\).*?end if)`),
 			"\r\n//SQLA17 migration - FIX1: deactivate driver check\r\n/*\r\n${1}\r\n*/",
 		},
 		{

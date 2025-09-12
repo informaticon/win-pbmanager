@@ -13,32 +13,49 @@ import (
 )
 
 func findPbtFilePath(basePath string, pbtFilePath string) (string, error) {
-	if pbtFilePath == "" {
-		candidates, err := filepath.Glob(fmt.Sprintf("%s/*.pbt", basePath))
-		if err != nil {
-			return "", err
-		}
-		if len(candidates) == 1 {
-			pbtFilePath = candidates[0]
-		} else {
-			for _, candidate := range candidates {
-				if filepath.Base(candidate) == "a3.pbt" {
-					pbtFilePath = candidate
-					break
-				}
+	return findFilePath(basePath, ".pbt", pbtFilePath)
+}
+
+func findPbProjFilePath(basePath string, pbtFilePath string) (string, error) {
+	return findFilePath(basePath, "pbproj", pbtFilePath)
+}
+
+// findFilePath searches for files with a given file extension in basePath.
+// extension must be prefixed with a dot (e.g. '.pbt').
+// If initPath is not an empty string, the function checks if it matches the criterias
+//
+//	(has the right extension and does exist) and returns it without looking of other files.
+func findFilePath(basePath string, extension string, initPath string) (string, error) {
+	var err error
+	if initPath != "" {
+		if !filepath.IsAbs(initPath) {
+			initPath, err = filepath.Abs(filepath.Join(basePath, initPath))
+			if err != nil {
+				return "", err
 			}
 		}
-		if pbtFilePath == "" {
-			return "", fmt.Errorf("could not find suitable PowerBuilder target in path %s", basePath)
+		if !utils.FileExists(initPath) || filepath.Ext(initPath) != extension {
+			return "", fmt.Errorf("file %s does not exist or is not a %s file", initPath, extension)
 		}
 	}
-	if !filepath.IsAbs(pbtFilePath) {
-		pbtFilePath = filepath.Join(basePath, pbtFilePath)
+	candidates, err := filepath.Glob(basePath + "/*" + extension)
+	if err != nil {
+		return "", err
 	}
-	if !utils.FileExists(pbtFilePath) || filepath.Ext(pbtFilePath) != ".pbt" {
-		return "", fmt.Errorf("file %s does not exist or is not a pbl file", pbtFilePath)
+	if len(candidates) == 1 {
+		initPath = candidates[0]
+	} else {
+		for _, candidate := range candidates {
+			if filepath.Base(candidate) == "a3.pbt" {
+				initPath = candidate
+				break
+			}
+		}
 	}
-	return pbtFilePath, nil
+	if initPath == "" {
+		return "", fmt.Errorf("could not find suitable PowerBuilder target in path %s", basePath)
+	}
+	return initPath, nil
 }
 
 func isPblPbtFile(path string) bool {

@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/informaticon/dev.win.base.pbmanager/internal/backport"
@@ -15,18 +13,20 @@ import (
 var backportCmd = &cobra.Command{
 	Use:   "backport <some.pbproj> [options] ",
 	Short: "performs the conversion back from PB project to target",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if _, err := os.Stat(args[0]); err != nil {
-			return fmt.Errorf("no .pbproj file was provided: %v", err)
+		var absoluteProjPath string
+
+		if len(args) == 0 {
+			absoluteProjPath = ""
+		} else {
+			absoluteProjPath = args[0]
 		}
-		absoluteProjPath, err := filepath.Abs(args[0])
+		absoluteProjPath, err := findPbProjFilePath(basePath, absoluteProjPath)
 		if err != nil {
 			return err
 		}
-		if filepath.Ext(absoluteProjPath) != ".pbproj" {
-			return fmt.Errorf("no .pbproj file was provided: %v", err)
-		}
+
 		if orcaVars.pbVersion != 22 {
 			return fmt.Errorf("currently, only PowerBuilder 22 is supported")
 		}

@@ -17,7 +17,7 @@ func findPbtFilePath(basePath string, pbtFilePath string) (string, error) {
 }
 
 func findPbProjFilePath(basePath string, pbtFilePath string) (string, error) {
-	return findFilePath(basePath, "pbproj", pbtFilePath)
+	return findFilePath(basePath, ".pbproj", pbtFilePath)
 }
 
 // findFilePath searches for files with a given file extension in basePath.

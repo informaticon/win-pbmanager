@@ -43,7 +43,10 @@ func ConvertProjectToTarget(Orca *pborca.Orca, pbProjFile string) error {
 	for i, lib := range pbProj.Libraries.GetPblPaths() {
 		pblFile := filepath.Join(filepath.Dir(pbProjFile), lib)
 		srcDir := pblFile + ".old"
-		os.Rename(pblFile, srcDir)
+		err = os.Rename(pblFile, srcDir)
+		if err != nil {
+			return fmt.Errorf("failed to rename %s to %s: %v", pblFile, srcDir, err)
+		}
 		srcDirs = append(srcDirs, srcDir)
 		pblFiles = append(pblFiles, pblFile)
 

@@ -78,9 +78,15 @@ func FixSqla17Base(libFolder string, targetName string, orca *pborca.Orca, warnF
 		},
 		{
 			"FIX3", "inf1.pbl", "inf1_u_transaction",
-			regexp.MustCompile(`(?is)//SQLA17 migration - FIX3:`),
-			regexp.MustCompile(`(?is)(public[ \t]+(?:subroutine|function)[^;\r\n]*?of_check_version[ \t]*[^;\r\n]+;)(.*?)(return 1)*([\t \r\n]+end[ t]+(?:subroutine|function)[\r\n]+)`),
-			"${1}//SQLA17 migration - FIX3: switch to new version check\r\n\r\n/*OLD SOURCE HAS BEEN REMOVED*/\r\n\r\nlong ll_fun_exists\r\nstring ls_error\r\nselect count(*) into :ll_fun_exists from sysprocedure where proc_name = 'dev_check_sqla_versions';\r\n// if function dev_check_sqla_versions does not exist, continue without db version check\r\nif ll_fun_exists > 0 then\r\n\tselect dev_check_sqla_versions() into :ls_error from dummy;\r\n\tif ls_error <> '' then\r\n\t\tthrow(gu_e.iu_as.of_re_database(gu_e.of_new_error().of_push(populateerror(0, ls_error)).of_push('this', this)))\r\n\tend if\r\nend if\r\n\r\n${3}${4}",
+			regexp.MustCompile(`(?is)(public[ \t]+subroutine[^;\r\n]*?of_check_version[ \t]*[^;\r\n]+;)//SQLA17 migration - FIX3-proc:`),
+			regexp.MustCompile(`(?is)(public[ \t]+subroutine[^;\r\n]*?of_check_version[ \t]*[^;\r\n]+;)(.*?)([\t \r\n]+end[ t]+subroutine[\r\n]+)`),
+			"${1}//SQLA17 migration - FIX3-proc: switch to new version check\r\n\r\n/*OLD SOURCE HAS BEEN REMOVED*/\r\n\r\nlong ll_fun_exists\r\nstring ls_error\r\nselect count(*) into :ll_fun_exists from sysprocedure where proc_name = 'dev_check_sqla_versions';\r\n// if function dev_check_sqla_versions does not exist, continue without db version check\r\nif ll_fun_exists > 0 then\r\n\tselect dev_check_sqla_versions() into :ls_error from dummy;\r\n\tif ls_error <> '' then\r\n\t\tthrow(gu_e.iu_as.of_re_database(gu_e.of_new_error().of_push(populateerror(0, ls_error)).of_push('this', this)))\r\n\tend if\r\nend if\r\n\r\n${4}",
+		},
+		{
+			"FIX3", "inf1.pbl", "inf1_u_transaction",
+			regexp.MustCompile(`(?is)(public[ \t]+function[^;\r\n]*?of_check_version[ \t]*[^;\r\n]+;)//SQLA17 migration - FIX3-func:`),
+			regexp.MustCompile(`(?is)(public[ \t]+function[^;\r\n]*?of_check_version[ \t]*[^;\r\n]+;)(.*?return 1)([\t \r\n]+end[ t]+function[\r\n]+)`),
+			"${1}//SQLA17 migration - FIX3-func: switch to new version check\r\n\r\n/*OLD SOURCE HAS BEEN REMOVED*/\r\n\r\nlong ll_fun_exists\r\nstring ls_error\r\nselect count(*) into :ll_fun_exists from sysprocedure where proc_name = 'dev_check_sqla_versions';\r\n// if function dev_check_sqla_versions does not exist, continue without db version check\r\nif ll_fun_exists > 0 then\r\n\tselect dev_check_sqla_versions() into :ls_error from dummy;\r\n\tif ls_error <> '' then\r\n\t\treturn -1\r\n\tend if\r\nend if\r\nreturn 0\r\n${3}",
 		},
 		{
 			"FIX4", "jif1.pbl", "jif1_u_jif_master",

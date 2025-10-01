@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
 
 	"github.com/informaticon/dev.win.base.pbmanager/internal/importer"
@@ -70,6 +72,8 @@ func ConvertProjectToTarget(Orca *pborca.Orca, pbProjFile string) error {
 		}
 	}
 
+	sortFiles(pbProj, pblFiles, srcDirs)
+
 	// have all ingredients, can start to import actual source
 	err = importer.Import(Orca, pbtFilePath, srcDirs, pblFiles)
 	if err != nil {
@@ -88,4 +92,23 @@ func createMainPblFromPbProj(Orca *pborca.Orca, pbProj *PbProject, workDir strin
 		return fmt.Errorf("failed to obtain minimal application PBL: %v", err)
 	}
 	return nil
+}
+
+func sortFiles(pbProj *PbProject, pblFiles, srcDirs []string) {
+	libOrder := pbProj.Libraries.GetPblPaths()
+	fmt.Println("libOrder", libOrder)
+	orderMap := make(map[string]int)
+	for i, v := range libOrder {
+		orderMap[v] = i
+	}
+	sort.Slice(pblFiles, func(i, j int) bool {
+		return orderMap[filepath.Base(pblFiles[i])] < orderMap[filepath.Base(pblFiles[j])]
+	})
+	// start at last lib entry:
+	slices.Reverse(pblFiles)
+	sort.Slice(srcDirs, func(i, j int) bool {
+		return orderMap[filepath.Base(srcDirs[i])] < orderMap[filepath.Base(srcDirs[j])]
+	})
+	// start at last lib entry:
+	slices.Reverse(srcDirs)
 }

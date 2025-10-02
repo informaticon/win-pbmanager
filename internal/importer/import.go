@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
+	_ "embed"
+
 	"github.com/informaticon/dev.win.base.pbmanager/utils"
 	pborca "github.com/informaticon/lib.go.base.pborca"
-
-	_ "embed"
 )
 
 //go:embed pbdom.pbl
@@ -23,6 +23,8 @@ var pbdomPbl []byte // can't be imported by source
 
 // Import tries to import into multiple pbls.
 // It tries to do it multiple times, so it also works from circular dependencies.
+
+// TODO add argument which pbl to ignore in run.
 func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []string) error {
 	minRun := 10
 	maxRun := len(srcFiles) * 3
@@ -32,6 +34,8 @@ func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []st
 	// To speed up the backporting process, only import pbls with error counter > 0 and keep track of errors per PBL.
 	// i.e. avoid importing 5 times one PBL that is already completely imported.
 	errLookUpMap := make(map[string]int)
+	errSrcLookUpMap := make(map[string]map[string]bool)
+	// lastInf1Err := -1
 
 	for iteration := range maxRun {
 		t1 := time.Now()
@@ -39,6 +43,13 @@ func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []st
 		errs = make([]error, 0)
 
 		for i, pblFilePath := range pblFiles {
+
+			// skip 2 layer pbls xyz2.pbl
+			if string(filepath.Base(pblFilePath)[3]) == "2" {
+				fmt.Println("skip layer 2 pbl", filepath.Base(pblFilePath))
+				continue
+			}
+
 			if errCount, ok := errLookUpMap[filepath.Base(pblFilePath)]; ok {
 				if errCount == 0 {
 					fmt.Println("skip", filepath.Base(pblFilePath), "has already 0 import errors")
@@ -46,7 +57,23 @@ func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []st
 				}
 			}
 
-			errSources := processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer)
+			// TODO first feed inf1 to reduce later errors
+			/*if !strings.Contains(filepath.Base(pblFilePath), "inf1.pbl") && lastInf1Err == -1 {
+				continue
+			} else if lastInf1Err == -1 {
+				errInf1 := processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer)
+				fmt.Println("\terror counter:", len(errInf1))
+				for len(errInf1) != lastInf1Err {
+					lastInf1Err = len(errInf1)
+					errInf1 = processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer)
+					fmt.Println("\terror counter:", len(errInf1))
+				}
+			}*/
+			if errSrcLookUpMap[filepath.Base(pblFilePath)] == nil {
+				errSrcLookUpMap[filepath.Base(pblFilePath)] = make(map[string]bool)
+			}
+			srcMap := errSrcLookUpMap[filepath.Base(pblFilePath)]
+			errSources := processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer, &srcMap)
 			fmt.Println("\terror counter:", len(errSources))
 			errLookUpMap[filepath.Base(pblFilePath)] = len(errSources)
 			errs = append(errs, errSources...)
@@ -67,7 +94,7 @@ func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []st
 }
 
 // processPbl imports all source file of one pbl directory and returns all obtained import errors.
-func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca.Orca) (errs []error) {
+func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca.Orca, srcMap *map[string]bool) (errs []error) {
 	if filepath.Base(pblFilePath) == "pbdom.pbl" {
 		fmt.Println("use embedded pbdom.pbl, skip source import")
 		err := os.WriteFile(pblFilePath, pbdomPbl, 0o644)
@@ -84,6 +111,9 @@ func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca
 		if err != nil {
 			return err
 		}
+		if filepath.Ext(path) == ".pblmeta" {
+			return nil
+		}
 		if !d.IsDir() {
 			// first collect all files, the order of importing matters, e.g. some.bin after some.srw
 			foundSrcFiles = append(foundSrcFiles, path)
@@ -95,10 +125,8 @@ func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca
 	}
 
 	// order according to file type
-	foundSrcFiles = sortSrcType(foundSrcFiles)
-	sortFilesMaster(foundSrcFiles)
+	foundSrcFiles = sortSrcTypeName(foundSrcFiles)
 	fmt.Println("\tfound source files:", len(foundSrcFiles))
-	fmt.Println("\tfirst source file:", filepath.Base(foundSrcFiles[0]))
 
 	// get all .bin files, might be several; key filename, val index
 	binFiles := make(map[string]int)
@@ -109,6 +137,13 @@ func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca
 	}
 
 	for _, foundSrcFile := range foundSrcFiles {
+
+		if isOk, ok := (*srcMap)[filepath.Base(foundSrcFile)]; ok {
+			if isOk {
+				continue
+			}
+		}
+
 		if filepath.Ext(foundSrcFile) == ".bin" {
 			continue
 		}
@@ -124,6 +159,11 @@ func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca
 		// In a second step call the same function immediately after containing the binary data part as PBORCA_BINARY.
 		// Since bin data part is not real part of source file. ONe can simply use srcData for the first step.
 		errSrc := orcaServer.SetObjSource(pbtFilePath, pblFilePath, filepath.Base(objName), srcData)
+		// TODO debug
+		if errSrc != nil {
+			fmt.Println("\tset source got error", filepath.Base(objName))
+		}
+
 		if errSrc != nil {
 			errs = append(errs, errSrc)
 			// ignore trivial errors due to missing dependency resolving
@@ -136,6 +176,7 @@ func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca
 			}
 		}
 
+		var errSetBin error
 		if _, hasBin := binFiles[strings.TrimSuffix(filepath.Base(foundSrcFile), filepath.Ext(foundSrcFile))]; hasBin {
 			binFile := strings.TrimSuffix(foundSrcFile, filepath.Ext(foundSrcFile)) + ".bin"
 			binSection, errGetBin := GetBinarySectionFromBin(binFile)
@@ -143,76 +184,77 @@ func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca
 				errs = append(errs, fmt.Errorf("failed to set OLE binary section to matching bin file %s: %v",
 					binFile, errors.Join(errGetBin, errSrc)))
 			}
-			errSetBin := orcaServer.SetObjBinary(pbtFilePath, pblFilePath, filepath.Base(objName), binSection)
+			errSetBin = orcaServer.SetObjBinary(pbtFilePath, pblFilePath, filepath.Base(objName), binSection)
 			if errSetBin != nil {
 				errs = append(errs, fmt.Errorf("failed to import binary data section in a second step %s: %v",
 					binFile, errors.Join(errSetBin, errSrc)))
 			}
 		}
+
+		// keep track of source errors and skip the ok files in next run
+		(*srcMap)[filepath.Base(foundSrcFile)] = errSrc == nil && errSetBin == nil
 	}
 	return errs
 }
 
-// sortSrcType is used to import the source file not in arbitrary order or according to their name, but according to
+// sortSrcTypeName is used to import the source file not in arbitrary order or according to their name, but according to
 // their meaning to reduce import errors and make the source import faster (first e.g. are structures).
-func sortSrcType(foundSourceFiles []string) []string {
-	extOrder := []string{".srs", ".srq", ".srp", ".srd", ".srf", ".srm", ".sru", ".srw", ".sra", ".srj"}
-	uniqueMap := make(map[string]bool)
-	uniqueFiles := []string{}
-	for _, fp := range foundSourceFiles {
-		if !uniqueMap[fp] {
-			uniqueMap[fp] = true
-			uniqueFiles = append(uniqueFiles, fp)
-		}
+func sortSrcTypeName(foundSourceFiles []string) []string {
+	// file type order
+	extPriority := []string{".srs", ".srq", ".srp", ".srd", ".srf", ".srm", ".sru", ".srw", ".sra", ".srj"}
+
+	extOrder := make(map[string]int)
+	for i, ext := range extPriority {
+		extOrder[strings.ToLower(ext)] = i
 	}
 
-	// map for extension order ranking
-	rank := map[string]int{}
-	for i, ext := range extOrder {
-		rank[strings.ToLower(ext)] = i
-	}
+	sort.Slice(foundSourceFiles, func(i, j int) bool {
+		fileA := foundSourceFiles[i]
+		fileB := foundSourceFiles[j]
 
-	sort.Slice(uniqueFiles, func(i, j int) bool {
-		extI := strings.ToLower(filepath.Ext(uniqueFiles[i]))
-		extJ := strings.ToLower(filepath.Ext(uniqueFiles[j]))
-		rankI, okI := rank[extI]
-		rankJ, okJ := rank[extJ]
-		if okI && okJ {
-			if rankI == rankJ {
-				return uniqueFiles[i] < uniqueFiles[j]
+		extA := filepath.Ext(fileA)
+		extB := filepath.Ext(fileB)
+
+		// sort by file extension priority
+		orderA, inPriorityListA := extOrder[extA]
+		orderB, inPriorityListB := extOrder[extB]
+
+		if inPriorityListA && inPriorityListB {
+			if orderA != orderB {
+				return orderA < orderB // lower order number comes first
 			}
-			return rankI < rankJ
+			// If extensions have the same priority, proceed to the next rule.
+		} else if inPriorityListA {
+			return true // A is in the list, B is not. A comes first.
+		} else if inPriorityListB {
+			return false // B is in the list, A is not. B comes first.
+		} else {
+			// neither extension is in the priority list: Sort them alphabetically by extension.
+			if extA != extB {
+				return extA < extB
+			}
 		}
-		if okI {
-			return true
+
+		// From here one the files have the same extension priority
+
+		// check for "master" in the filename
+		baseA := strings.TrimSuffix(filepath.Base(fileA), extA)
+		baseB := strings.TrimSuffix(filepath.Base(fileB), extB)
+		containsMasterA := strings.Contains(baseA, "master")
+		containsMasterB := strings.Contains(baseB, "master")
+		if containsMasterA != containsMasterB {
+			return containsMasterA // true (contains "master") is "less than" false
 		}
-		if okJ {
-			return false
-		}
-		// if neither extension known, sort lexicographically
-		return uniqueFiles[i] < uniqueFiles[j]
+
+		// From here on the files are of the same priority and "master" status.
+
+		/*// Sort by length of the full filename
+		if len(filepath.Base(fileA)) != len(filepath.Base(fileB)) {
+			return len(filepath.Base(fileA)) < len(filepath.Base(fileB)) // shorter filename comes first
+		}*/ // TODO BAD idea, does increase import time drastically since unlogic import order
+
+		// alphabetical order
+		return fileA < fileB
 	})
-	return uniqueFiles
-}
-
-// sortFilesMaster sorts filenames slice, prioritizing files containing "master".
-// This is useful since those files are inherited more often and if imported first, it drastically reduces the number
-// of compile errors when importing further source.
-// TODO add more logic, like "basis" or other "naming convention" that could improve the source import.
-func sortFilesMaster(files []string) {
-	sort.Slice(files, func(i, j int) bool {
-		baseI := filepath.Base(files[i])
-		baseJ := filepath.Base(files[j])
-
-		containsTestI := strings.Contains(baseI, "master")
-		containsTestJ := strings.Contains(baseJ, "master")
-
-		if containsTestI && !containsTestJ {
-			return true
-		}
-		if !containsTestI && containsTestJ {
-			return false
-		}
-		return baseI < baseJ
-	})
+	return foundSourceFiles
 }

@@ -23,6 +23,12 @@ var pbdomPbl []byte // can't be imported by source
 
 // Import tries to import into multiple pbls.
 // It tries to do it multiple times, so it also works from circular dependencies.
+// TODO it is not needed anymore for backporting: If this changes:
+//   - sort pbls revers the lib list, keep track of pbls that are imported completely to skip those in further iterations.
+//   - it might help to start with inf1 until no error reduction can be achieved
+//   - keeping track of source .sr* files (import errors) does not help. They must all be import not only partially
+//   - sorting after src type helps (structures first, ...)
+//   - if the orca server crashes on layer 2 pbls, try to import layer one only until no error reduction can be observed.
 func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []string) error {
 	minRun := 15
 	maxRun := len(srcFiles) * 3
@@ -32,23 +38,13 @@ func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []st
 	// To speed up the backporting process, only import pbls with error counter > 0 and keep track of errors per PBL.
 	// i.e. avoid importing 5 times one PBL that is already completely imported.
 	errLookUpMap := make(map[string]int)
-	errSrcLookUpMap := make(map[string]map[string]bool)
-
-	lastInf1Err := -1
+	// lastInf1Err := -1 // handle inf1 first to reduce initial errors
 
 	for iteration := range maxRun {
 		t1 := time.Now()
 		// collected errors of one iteration, number should decrease with each iteration
 		errs = make([]error, 0)
 		for i, pblFilePath := range pblFiles {
-
-			// skip 2 layer pbls xyz2.pbl until some iteration to bring level errors first down (TODO)
-			/*filename := strings.TrimSuffix(filepath.Base(pblFilePath), filepath.Ext(pblFilePath))
-			if filename[len(filename)-1:] == "2" && iteration < 5 { // 5 iteration layer one first
-				fmt.Println("skip layer 2 pbl", filepath.Base(pblFilePath))
-				continue
-			}*/
-
 			if errCount, ok := errLookUpMap[filepath.Base(pblFilePath)]; ok {
 				if errCount == 0 {
 					fmt.Println("skip", filepath.Base(pblFilePath), "has already 0 import errors")
@@ -56,13 +52,8 @@ func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []st
 				}
 			}
 
-			if errSrcLookUpMap[filepath.Base(pblFilePath)] == nil {
-				errSrcLookUpMap[filepath.Base(pblFilePath)] = make(map[string]bool)
-			}
-			srcMap := errSrcLookUpMap[filepath.Base(pblFilePath)]
-
-			// TODO first feed inf1 to reduce later errors
-			if !strings.Contains(filepath.Base(pblFilePath), "inf1.pbl") && lastInf1Err == -1 {
+			// first feed inf1 to reduce later errors
+			/*if !strings.Contains(filepath.Base(pblFilePath), "inf1.pbl") && lastInf1Err == -1 {
 				continue
 			} else if lastInf1Err == -1 {
 				errInf1 := processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer, &srcMap)
@@ -72,9 +63,9 @@ func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []st
 					errInf1 = processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer, &srcMap)
 					fmt.Println("\terror counter:", len(errInf1))
 				}
-			}
+			}*/
 
-			errSources := processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer, &srcMap)
+			errSources := processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer)
 			fmt.Println("\terror counter:", len(errSources))
 			errLookUpMap[filepath.Base(pblFilePath)] = len(errSources)
 			errs = append(errs, errSources...)
@@ -95,7 +86,7 @@ func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []st
 }
 
 // processPbl imports all source file of one pbl directory and returns all obtained import errors.
-func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca.Orca, srcMap *map[string]bool) (errs []error) {
+func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca.Orca) (errs []error) {
 	if filepath.Base(pblFilePath) == "pbdom.pbl" {
 		fmt.Println("use embedded pbdom.pbl, skip source import")
 		err := os.WriteFile(pblFilePath, pbdomPbl, 0o644)
@@ -112,6 +103,7 @@ func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca
 		if err != nil {
 			return err
 		}
+		// not a source file
 		if filepath.Ext(path) == ".pblmeta" {
 			return nil
 		}
@@ -137,25 +129,8 @@ func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca
 		}
 	}
 
-	// TODO try all source files if it does not evolve
-	preCounterSuccess := 0
-	for _, v := range *srcMap {
-		if v {
-			preCounterSuccess++
-		}
-	}
-
 	for _, foundSrcFile := range foundSrcFiles {
-
-		// don't import source files again if they were already successful
-		if isOk, ok := (*srcMap)[filepath.Base(foundSrcFile)]; ok && isOk {
-			continue
-		}
-
 		if filepath.Ext(foundSrcFile) == ".bin" {
-			// TODO debug
-			fmt.Println("set bin file to true", filepath.Base(foundSrcFile))
-			(*srcMap)[filepath.Base(foundSrcFile)] = true
 			continue
 		}
 
@@ -170,11 +145,6 @@ func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca
 		// In a second step call the same function immediately after containing the binary data part as PBORCA_BINARY.
 		// Since bin data part is not real part of source file. ONe can simply use srcData for the first step.
 		errSrc := orcaServer.SetObjSource(pbtFilePath, pblFilePath, filepath.Base(objName), srcData)
-		// TODO debug
-		/*if errSrc != nil {
-			fmt.Println("\tset source got error", filepath.Base(objName))
-		}*/
-
 		if errSrc != nil {
 			errs = append(errs, errSrc)
 			// ignore trivial errors due to missing dependency resolving
@@ -201,29 +171,7 @@ func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca
 					binFile, errors.Join(errSetBin, errSrc)))
 			}
 		}
-
-		// keep track of source errors and skip the ok files in next run
-		(*srcMap)[filepath.Base(foundSrcFile)] = errSrc == nil && errSetBin == nil
-
 	}
-	// TODO debug
-	counterSuccess := 0
-	for _, v := range *srcMap {
-		if v {
-			counterSuccess++
-		}
-	}
-	fmt.Println("\tsuccess counter", counterSuccess)
-	// Retry all src files again if the number of errors did not improve during this run. So for nect run ALL source
-	// files are again imported. This has an effect and avoids no progress at all across the project.
-	// Does this imply that a source import without error is not yet a complete import?
-	if preCounterSuccess == counterSuccess && len(errs) > 0 {
-		fmt.Println("\treset src files error counter: Import again all files in next run")
-		for k := range *srcMap {
-			(*srcMap)[k] = false
-		}
-	}
-
 	return errs
 }
 
@@ -275,13 +223,6 @@ func sortSrcTypeName(foundSourceFiles []string) []string {
 		if containsMasterA != containsMasterB {
 			return containsMasterA // true (contains "master") is "less than" false
 		}
-
-		// From here on the files are of the same priority and "master" status.
-
-		/*// Sort by length of the full filename
-		if len(filepath.Base(fileA)) != len(filepath.Base(fileB)) {
-			return len(filepath.Base(fileA)) < len(filepath.Base(fileB)) // shorter filename comes first
-		}*/ // TODO BAD idea, does increase import time drastically since unlogic import order
 
 		// alphabetical order
 		return fileA < fileB

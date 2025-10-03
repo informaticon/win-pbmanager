@@ -33,7 +33,8 @@ func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []st
 	// i.e. avoid importing 5 times one PBL that is already completely imported.
 	errLookUpMap := make(map[string]int)
 	errSrcLookUpMap := make(map[string]map[string]bool)
-	// lastInf1Err := -1
+
+	lastInf1Err := -1
 
 	for iteration := range maxRun {
 		t1 := time.Now()
@@ -56,17 +57,19 @@ func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []st
 			}
 
 			// TODO first feed inf1 to reduce later errors
-			/*if !strings.Contains(filepath.Base(pblFilePath), "inf1.pbl") && lastInf1Err == -1 {
+			if !strings.Contains(filepath.Base(pblFilePath), "inf1.pbl") && lastInf1Err == -1 {
 				continue
 			} else if lastInf1Err == -1 {
-				errInf1 := processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer)
+				srcMap := errSrcLookUpMap[filepath.Base(pblFilePath)]
+				errInf1 := processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer, &srcMap)
 				fmt.Println("\terror counter:", len(errInf1))
 				for len(errInf1) != lastInf1Err {
 					lastInf1Err = len(errInf1)
-					errInf1 = processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer)
+					errInf1 = processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer, &srcMap)
 					fmt.Println("\terror counter:", len(errInf1))
 				}
-			}*/
+			}
+
 			if errSrcLookUpMap[filepath.Base(pblFilePath)] == nil {
 				errSrcLookUpMap[filepath.Base(pblFilePath)] = make(map[string]bool)
 			}
@@ -214,7 +217,7 @@ func processPbl(pblFilePath, srcFilePath, pbtFilePath string, orcaServer *pborca
 	// Retry all src files again if the number of errors did not improve during this run. So for nect run ALL source
 	// files are again imported. This has an effect and avoids no progress at all across the project.
 	// Does this imply that a source import without error is not yet a complete import?
-	if preCounterSuccess == counterSuccess {
+	if preCounterSuccess == counterSuccess && len(errs) > 0 {
 		fmt.Println("\treset src files error counter: Import again all files in next run")
 		for k := range *srcMap {
 			(*srcMap)[k] = false

@@ -27,7 +27,7 @@ func Src25ToWsObjects(pbProj *PbProject) error {
 		if err != nil {
 			return err
 		}
-		err = utils.CopyDirectory(pblDir, srcDirWsObjects)
+		err = utils.CopyDirectoryWithUtf8Bom(pblDir, srcDirWsObjects)
 		if err != nil {
 			return fmt.Errorf("failed to copy %s to %s: %v", pblDir, srcDirWsObjects, err)
 		}

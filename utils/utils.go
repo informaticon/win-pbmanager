@@ -57,9 +57,31 @@ func CopyFile(src string, dst string) error {
 	return nil
 }
 
-// CopyDirectory recursively copies a directory from a source path to a destination path.
+func CopyWithUtf8Bom(dstPath, srcPath string) error {
+	srcFile, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dstPath)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	bomWriter := transform.NewWriter(dstFile, unicode.UTF8BOM.NewEncoder())
+
+	_, err = io.Copy(bomWriter, srcFile)
+	if err != nil {
+		return err
+	}
+	return bomWriter.Close()
+}
+
+// CopyDirectoryWithUtf8Bom recursively copies a directory from a source path to a destination path.
 // It preserves file and directory permissions.
-func CopyDirectory(src, dst string) error {
+func CopyDirectoryWithUtf8Bom(src, dst string) error {
 	srcInfo, err := os.Stat(src)
 	if err != nil {
 		return fmt.Errorf("failed to stat source directory: %w", err)
@@ -82,12 +104,12 @@ func CopyDirectory(src, dst string) error {
 		if info.IsDir() {
 			return os.MkdirAll(dstPath, info.Mode())
 		}
-		return CopyFile(path, dstPath)
+		return CopyWithUtf8Bom(path, dstPath)
 	})
 	return err
 }
 
-// GetRessource downloads a blob from an url and caches it for further use.
+// GetRessource downloads a blob from a url and caches it for further use.
 // It's needed to get pbdk, some pbl files and other big binary data.
 func GetRessource(url string) (string, error) {
 	dstFilePath := filepath.Join(os.TempDir(), "pbmigrator", path.Base(url))

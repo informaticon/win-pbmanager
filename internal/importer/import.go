@@ -56,11 +56,15 @@ func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []st
 				}
 			}
 
+			if errSrcLookUpMap[filepath.Base(pblFilePath)] == nil {
+				errSrcLookUpMap[filepath.Base(pblFilePath)] = make(map[string]bool)
+			}
+			srcMap := errSrcLookUpMap[filepath.Base(pblFilePath)]
+
 			// TODO first feed inf1 to reduce later errors
 			if !strings.Contains(filepath.Base(pblFilePath), "inf1.pbl") && lastInf1Err == -1 {
 				continue
 			} else if lastInf1Err == -1 {
-				srcMap := errSrcLookUpMap[filepath.Base(pblFilePath)]
 				errInf1 := processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer, &srcMap)
 				fmt.Println("\terror counter:", len(errInf1))
 				for len(errInf1) != lastInf1Err {
@@ -70,10 +74,6 @@ func Import(orcaServer *pborca.Orca, pbtFilePath string, srcFiles, pblFiles []st
 				}
 			}
 
-			if errSrcLookUpMap[filepath.Base(pblFilePath)] == nil {
-				errSrcLookUpMap[filepath.Base(pblFilePath)] = make(map[string]bool)
-			}
-			srcMap := errSrcLookUpMap[filepath.Base(pblFilePath)]
 			errSources := processPbl(pblFilePath, srcFiles[i], pbtFilePath, orcaServer, &srcMap)
 			fmt.Println("\terror counter:", len(errSources))
 			errLookUpMap[filepath.Base(pblFilePath)] = len(errSources)

@@ -1,7 +1,10 @@
 package backport
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -27,7 +30,7 @@ func Src25ToWsObjects(pbProj *PbProject) error {
 		if err != nil {
 			return err
 		}
-		err = utils.CopyDirectoryWithUtf8Bom(pblDir, srcDirWsObjects)
+		err = utils.CopyDirectory(pblDir, srcDirWsObjects)
 		if err != nil {
 			return fmt.Errorf("failed to copy %s to %s: %v", pblDir, srcDirWsObjects, err)
 		}
@@ -47,6 +50,13 @@ func Src25ToWsObjects(pbProj *PbProject) error {
 			return err
 		}
 	}
+
+	// first integrate bin parts into source files before adding BOM to it. Is simpler since bin integration has been
+	// implemented already without BOM.
+	err = ConvertDirectoryContentToUTF8Bom(wsObjects)
+	if err != nil {
+		return fmt.Errorf("failed to convert ws_objects content to UTF-8 bom: %v", err)
+	}
 	return nil
 }
 
@@ -54,7 +64,7 @@ func Src25ToWsObjects(pbProj *PbProject) error {
 // into their equally named .sr* file.
 func integrateBinFilesToSrc(srcDir string) error {
 	// for bin file -> read content -> add it to src file
-	fmt.Println("modify source dir:", srcDir)
+	fmt.Println("create ws_objects source dir:", srcDir)
 	binFiles := make(map[string]bool)
 	var foundSrcFiles []string
 	err := filepath.WalkDir(srcDir, func(path string, d fs.DirEntry, err error) error {
@@ -105,6 +115,88 @@ func integrateBinToSrc(foundSrcFiles []string, binFiles map[string]bool) error {
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func ConvertDirectoryContentToUTF8Bom(rootPath string) error {
+	info, err := os.Stat(rootPath)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("directory %s does not exist: %v", rootPath, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("provided path is not a directory: %s", rootPath)
+	}
+	err = filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if err := processFile(path); err != nil {
+			return fmt.Errorf("failed to process file %s: %v", path, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+var utf8BOM = []byte{0xEF, 0xBB, 0xBF}
+
+// processFile converts the file if not yet to UTF-8 BOM encoding and adds export heade
+func processFile(path string) error {
+	srcFile, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("could not open source file: %v", err)
+	}
+	defer srcFile.Close()
+	header := make([]byte, 3)
+	n, err := io.ReadFull(srcFile, header)
+	if err != nil && err != io.EOF && !errors.Is(err, io.ErrUnexpectedEOF) {
+		return fmt.Errorf("could not read file header: %v", err)
+	}
+
+	actualHeader := header[:n]
+	if bytes.Equal(actualHeader, utf8BOM) {
+		fmt.Printf("Skip %s (already has BOM)\n", path)
+		return nil
+	}
+
+	info, err := srcFile.Stat()
+	if err != nil {
+		return fmt.Errorf("could not get file stats: %v", err)
+	}
+	tmpFile, err := os.CreateTemp(filepath.Dir(path), "bom-")
+	if err != nil {
+		return fmt.Errorf("could not create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+	if _, err := tmpFile.Write(utf8BOM); err != nil {
+		return fmt.Errorf("could not write BOM to temp file: %v", err)
+	}
+	if _, err := tmpFile.Write([]byte(fmt.Sprintf("$PBExportHeader$%s\r\n", filepath.Base(path)))); err != nil {
+		return fmt.Errorf("could not write export header to temp file: %v", err)
+	}
+	if _, err := tmpFile.Write(actualHeader); err != nil {
+		return fmt.Errorf("could not write header to temp file: %v", err)
+	}
+	if _, err := io.Copy(tmpFile, srcFile); err != nil {
+		return fmt.Errorf("could not copy file content: %v", err)
+	}
+	srcFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("could not close temp file: %v", err)
+	}
+	if err := os.Chmod(tmpFile.Name(), info.Mode()); err != nil {
+		return fmt.Errorf("could not set permissions on temp file: %v", err)
+	}
+	if err := os.Rename(tmpFile.Name(), path); err != nil {
+		return fmt.Errorf("could not rename temp file: %v", err)
 	}
 	return nil
 }

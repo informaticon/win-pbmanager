@@ -57,7 +57,7 @@ func CopyFile(src string, dst string) error {
 	return nil
 }
 
-func CopyWithUtf8Bom(dstPath, srcPath string) error {
+func CopyWithUtf8Bom(srcPath, dstPath string) error {
 	srcFile, err := os.Open(srcPath)
 	if err != nil {
 		return err
@@ -79,9 +79,8 @@ func CopyWithUtf8Bom(dstPath, srcPath string) error {
 	return bomWriter.Close()
 }
 
-// CopyDirectoryWithUtf8Bom recursively copies a directory from a source path to a destination path.
-// It preserves file and directory permissions.
-func CopyDirectoryWithUtf8Bom(src, dst string) error {
+// CopyDirectory recursively copies a directory from a source path to a destination path.
+func CopyDirectory(src, dst string) error {
 	srcInfo, err := os.Stat(src)
 	if err != nil {
 		return fmt.Errorf("failed to stat source directory: %w", err)
@@ -104,7 +103,7 @@ func CopyDirectoryWithUtf8Bom(src, dst string) error {
 		if info.IsDir() {
 			return os.MkdirAll(dstPath, info.Mode())
 		}
-		return CopyWithUtf8Bom(path, dstPath)
+		return CopyFile(path, dstPath)
 	})
 	return err
 }

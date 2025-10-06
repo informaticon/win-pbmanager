@@ -64,12 +64,13 @@ func ConvertProjectToTarget(pbProjFile string) error {
 	if err != nil {
 		return err
 	}
-	return runPbAutoBuild(autoBuildJsonFile)
+	return runPbAutoBuild(strings.TrimSuffix(filepath.Base(pbProjFile), ".pbproj"))
 }
 
-// runPbAutoBuild executes the pbautobuild command with a given JSON config file
-func runPbAutoBuild(jsonConfigPath string) error {
-	cmd := exec.Command("pbautobuild220.exe", "/f", jsonConfigPath)
+// runPbAutoBuild executes the pbautobuild command with ./a3.json!!!
+// Must be exactly like this, no absolute path no, no "a3.json" -_-
+func runPbAutoBuild(jsonName string) error {
+	cmd := exec.Command("pbautobuild220.exe", "/f", fmt.Sprintf(".\\%s.json", jsonName))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	fmt.Println("run", cmd.String())

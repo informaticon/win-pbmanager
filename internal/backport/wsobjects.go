@@ -2,9 +2,7 @@ package backport
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -217,58 +215,4 @@ func modifyFileInPlace(filePath string) (err error) {
 		return fmt.Errorf("failed to rename temp file to original %s: %v", filePath, err)
 	}
 	return err
-}
-
-// processFile converts the file if not yet to UTF-8 BOM encoding and adds export heade
-func processFile(path string) error {
-	srcFile, err := os.Open(path)
-	if err != nil {
-		return fmt.Errorf("could not open source file: %v", err)
-	}
-	defer srcFile.Close()
-	header := make([]byte, 3)
-	n, err := io.ReadFull(srcFile, header)
-	if err != nil && err != io.EOF && !errors.Is(err, io.ErrUnexpectedEOF) {
-		return fmt.Errorf("could not read file header: %v", err)
-	}
-
-	actualHeader := header[:n]
-	if bytes.Equal(actualHeader, utf8BOM) {
-		fmt.Printf("Skip %s (already has BOM)\n", path)
-		return nil
-	}
-
-	info, err := srcFile.Stat()
-	if err != nil {
-		return fmt.Errorf("could not get file stats: %v", err)
-	}
-	tmpFile, err := os.CreateTemp(filepath.Dir(path), "bom-")
-	if err != nil {
-		return fmt.Errorf("could not create temp file: %v", err)
-	}
-	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
-	if _, err := tmpFile.Write(utf8BOM); err != nil {
-		return fmt.Errorf("could not write BOM to temp file: %v", err)
-	}
-	if _, err := tmpFile.Write([]byte(fmt.Sprintf("$PBExportHeader$%s\r\n", filepath.Base(path)))); err != nil {
-		return fmt.Errorf("could not write export header to temp file: %v", err)
-	}
-	if _, err := tmpFile.Write(actualHeader); err != nil {
-		return fmt.Errorf("could not write header to temp file: %v", err)
-	}
-	if _, err := io.Copy(tmpFile, srcFile); err != nil {
-		return fmt.Errorf("could not copy file content: %v", err)
-	}
-	srcFile.Close()
-	if err := tmpFile.Close(); err != nil {
-		return fmt.Errorf("could not close temp file: %v", err)
-	}
-	if err := os.Chmod(tmpFile.Name(), info.Mode()); err != nil {
-		return fmt.Errorf("could not set permissions on temp file: %v", err)
-	}
-	if err := os.Rename(tmpFile.Name(), path); err != nil {
-		return fmt.Errorf("could not rename temp file: %v", err)
-	}
-	return nil
 }

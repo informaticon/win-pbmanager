@@ -6,7 +6,7 @@ on:
       # former tag creation (pre_release_branches: prerelease, release_branches: main)
       - main
       - prerelease
-      - dev_backport
+      # - dev_backport
   workflow_dispatch:
 
 jobs:

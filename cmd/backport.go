@@ -22,10 +22,14 @@ var backportCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return backport.ConvertProjectToTarget(absoluteProjPath)
+		return backport.ConvertProjectToTarget(absoluteProjPath, verbose)
 	},
 }
 
+// verbose will be set to true if the user provides the --verbose or -v flag.
+var verbose bool
+
 func init() {
 	rootCmd.AddCommand(backportCmd)
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
 }

@@ -3,6 +3,7 @@
 package backport
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,7 +12,7 @@ import (
 )
 
 // ConvertProjectToTarget modifies src files referenced by .pbproj directory and converts the project back to target.
-func ConvertProjectToTarget(pbProjFile string) error {
+func ConvertProjectToTarget(pbProjFile string, verbose bool) error {
 	rules := []FileRule{
 		{Matcher: matchExt(".srd"), Handler: handleSrdFile},
 		{Matcher: matchExt(".sra"), Handler: handleSraFile},
@@ -34,7 +35,7 @@ func ConvertProjectToTarget(pbProjFile string) error {
 		return fmt.Errorf("failed to write actual application target %s: %v", pbtFilePath, err)
 	}
 
-	err = Src25ToWsObjects(pbProj)
+	err = Src25ToWsObjects(pbProj, verbose)
 	if err != nil {
 		return err
 	}
@@ -64,21 +65,30 @@ func ConvertProjectToTarget(pbProjFile string) error {
 	if err != nil {
 		return err
 	}
-	return runPbAutoBuild(strings.TrimSuffix(filepath.Base(pbProjFile), ".pbproj"))
+	return runPbAutoBuild(strings.TrimSuffix(filepath.Base(pbProjFile), ".pbproj"), verbose)
 }
 
 // runPbAutoBuild executes the pbautobuild command with ./a3.json!!!
 // Must be exactly like this, no absolute path no, no "a3.json" -_-
-func runPbAutoBuild(jsonName string) error {
+func runPbAutoBuild(jsonName string, verbose bool) error {
 	cmd := exec.Command("pbautobuild220.exe", "/f", fmt.Sprintf(".\\%s.json", jsonName))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	fmt.Println("run", cmd.String())
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start pbautobuild command %s: %v", cmd.String(), err)
+	fmt.Printf("running command: %s\n", cmd.String())
+	if verbose {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
 	}
-	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("pbautobuild (%s) execution failed: %v", cmd.String(), err)
+	var stdoutBuf, stderrBuf bytes.Buffer
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("command '%s' failed: %w\n  stdout: %s\n  stderr: %s",
+			cmd.String(),
+			err,
+			strings.TrimSpace(stdoutBuf.String()),
+			strings.TrimSpace(stderrBuf.String()),
+		)
 	}
 	return nil
 }

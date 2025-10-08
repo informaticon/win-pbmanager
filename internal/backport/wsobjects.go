@@ -120,6 +120,8 @@ func integrateBinToSrc(foundSrcFiles []string, binFiles map[string]bool) error {
 	return nil
 }
 
+// ConvertDirectoryContentToUTF8Bom encodes all source files to UTF8 with BOM after the binary content (OLE) was added
+// to source separately.
 func ConvertDirectoryContentToUTF8Bom(rootPath string) error {
 	info, err := os.Stat(rootPath)
 	if os.IsNotExist(err) {
@@ -183,9 +185,12 @@ func modifyFileInPlace(filePath string) (err error) {
 	if len(parts) > 1 {
 		restOfContent = parts[1]
 	}
-	// replace evtl comments with correct syntax and add export header.
-	firstLine = strings.Replace(firstLine, "//objectcomments ", "$PBExportComments$", 1)
-	newFirstLine := fmt.Sprintf("$PBExportHeader$%s\r\n", filepath.Base(filePath)) + firstLine
+	// Only if the first line has a //objectcomments replace it, else don't touch it.
+	newFirstLine := strings.Replace(firstLine, "//objectcomments ", "$PBExportComments$", 1)
+	// If there was already an export header on the first line, one must not add another one.
+	if !bytes.HasPrefix(contentBytes, []byte("$PBExportHeader$")) {
+		newFirstLine = fmt.Sprintf("$PBExportHeader$%s\r\n", filepath.Base(filePath)) + newFirstLine
+	}
 
 	var finalContentBuilder strings.Builder
 	finalContentBuilder.WriteString(newFirstLine)

@@ -1,11 +1,7 @@
 package cmd
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/informaticon/dev.win.base.pbmanager/internal/backport"
-	pborca "github.com/informaticon/lib.go.base.pborca"
 	"github.com/spf13/cobra"
 )
 
@@ -26,31 +22,14 @@ var backportCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
-		if orcaVars.pbVersion != 22 {
-			return fmt.Errorf("currently, only PowerBuilder 22 is supported")
-		}
-		var opts []func(*pborca.Orca)
-		if orcaVars.pbRuntimeFolder != "" {
-			opts = append(opts, pborca.WithOrcaRuntime(orcaVars.pbRuntimeFolder))
-		}
-		opts = append(opts, pborca.WithOrcaTimeout(time.Duration(orcaVars.timeoutSeconds)*time.Second))
-		if orcaVars.serverAddr != "" {
-			opts = append(opts, pborca.WithOrcaServer(orcaVars.serverAddr, orcaVars.serverApiKey))
-		}
-		Orca, err := pborca.NewOrca(orcaVars.pbVersion, opts...)
-		if err != nil {
-			return err
-		}
-		defer Orca.Close()
-
-		return backport.ConvertProjectToTarget(Orca, absoluteProjPath)
+		return backport.ConvertProjectToTarget(absoluteProjPath, verbose)
 	},
 }
 
-var minIterations int
+// verbose will be set to true if the user provides the --verbose or -v flag.
+var verbose bool
 
 func init() {
 	rootCmd.AddCommand(backportCmd)
-	backportCmd.Flags().IntVar(&minIterations, "min-iter", 15, "number of iterations through all PBL sources when errors occur.")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
 }

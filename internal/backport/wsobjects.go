@@ -1,0 +1,223 @@
+package backport
+
+import (
+	"bytes"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/informaticon/dev.win.base.pbmanager/internal/importer"
+	"github.com/informaticon/dev.win.base.pbmanager/utils"
+)
+
+// Src25ToWsObjects moves all xyz.pbl directories beside the .pbproj file to ws_objects/xyz.pbl.src
+// and integrates all .bin files into .sr* files so that pbautobuild220 can regenerate the PBLs.
+func Src25ToWsObjects(pbProj *PbProject, verbose bool) error {
+	// all layers must be created als src dir but empty, e.g. adi3.pbl.src
+	wsObjects := filepath.Join(filepath.Dir(pbProj.filePath), "ws_objects")
+	err := os.MkdirAll(wsObjects, 0o755)
+	if err != nil {
+		return err
+	}
+	for _, lib := range pbProj.Libraries.GetPblPaths() {
+		pblDir := filepath.Join(filepath.Dir(pbProj.filePath), lib)
+		srcDirWsObjects := filepath.Join(wsObjects, filepath.Base(lib+".src"))
+		err = os.MkdirAll(srcDirWsObjects, 0o755)
+		if err != nil {
+			return err
+		}
+		err = utils.CopyDirectory(pblDir, srcDirWsObjects)
+		if err != nil {
+			return fmt.Errorf("failed to copy %s to %s: %v", pblDir, srcDirWsObjects, err)
+		}
+		err = os.Rename(pblDir, pblDir+".old")
+		if err != nil {
+			return err
+		}
+	}
+
+	wsObjectsSubDirs, err := utils.ImmediateSubDirs(wsObjects)
+	if err != nil {
+		return err
+	}
+	for _, subDir := range wsObjectsSubDirs {
+		err = integrateBinFilesToSrc(filepath.Join(wsObjects, subDir), verbose)
+		if err != nil {
+			return err
+		}
+	}
+
+	// first integrate bin parts into source files before adding BOM to it. Is simpler since bin integration has been
+	// implemented already without BOM.
+	err = ConvertDirectoryContentToUTF8Bom(wsObjects)
+	if err != nil {
+		return fmt.Errorf("failed to convert ws_objects content to UTF-8 bom: %v", err)
+	}
+	return nil
+}
+
+// integrateBinFilesToSrc reads all files in ws_objects source dir and if there are .bin files, those are integrated
+// into their equally named .sr* file.
+func integrateBinFilesToSrc(srcDir string, verbose bool) error {
+	// for bin file -> read content -> add it to src file
+	if verbose {
+		fmt.Println("create ws_objects source dir:", srcDir)
+	}
+	binFiles := make(map[string]bool)
+	var foundSrcFiles []string
+	err := filepath.WalkDir(srcDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if filepath.Ext(path) == ".bin" {
+			binFiles[strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))] = true
+		} else if filepath.Ext(path) == ".pblmeta" {
+			return os.Remove(path)
+		} else if !d.IsDir() {
+			foundSrcFiles = append(foundSrcFiles, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if verbose {
+		fmt.Println("Found ", len(foundSrcFiles), " files")
+		fmt.Println("Found ", len(binFiles), " binaries")
+	}
+	if len(binFiles) > 0 {
+		return integrateBinToSrc(foundSrcFiles, binFiles)
+	}
+	return nil
+}
+
+func integrateBinToSrc(foundSrcFiles []string, binFiles map[string]bool) error {
+	for _, file := range foundSrcFiles {
+		if _, hasBin := binFiles[strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))]; hasBin {
+			binFile := strings.TrimSuffix(file, filepath.Ext(file)) + ".bin"
+			binSection, err := importer.GetBinarySectionFromBin(binFile)
+			if err != nil {
+				return fmt.Errorf("failed to set OLE binary section to matching bin file %s: %v",
+					binFile, err)
+			}
+			f, err := os.OpenFile(file, os.O_RDWR|os.O_APPEND, 0o666)
+			if err != nil {
+				return fmt.Errorf("failed to open file %s: %v", file, err)
+			}
+			_, err = f.Write(binSection)
+			_ = f.Close()
+			if err != nil {
+				return fmt.Errorf("failed to add bin section to %s: %v", file, err)
+			}
+			err = os.Remove(binFile)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// ConvertDirectoryContentToUTF8Bom encodes all source files to UTF8 with BOM after the binary content (OLE) was added
+// to source separately.
+func ConvertDirectoryContentToUTF8Bom(rootPath string) error {
+	info, err := os.Stat(rootPath)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("directory %s does not exist: %v", rootPath, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("provided path is not a directory: %s", rootPath)
+	}
+	err = filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if err := modifyFileInPlace(path); err != nil {
+			return fmt.Errorf("failed to process file %s: %v", path, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+var utf8BOM = []byte{0xEF, 0xBB, 0xBF}
+
+// modifyFileInPlace creates a temp file with modified content: Added export header, exchanging evtl header comment,
+// removing in file EOF. Then it replaces the original file atomically.
+func modifyFileInPlace(filePath string) (err error) {
+	var info fs.FileInfo
+	info, err = os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to stat original file %s: %v", filePath, err)
+	}
+	originalPerms := info.Mode().Perm()
+	var tempFile *os.File
+	tempFile, err = os.CreateTemp(filepath.Dir(filePath), "modify-*.tmp")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer func() {
+		if err != nil {
+			tempFile.Close()
+			os.Remove(tempFile.Name())
+		}
+	}()
+	var contentBytes []byte
+	contentBytes, err = os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read source file %s: %v", filePath, err)
+	}
+	contentBytes = bytes.TrimPrefix(contentBytes, utf8BOM)
+	contentStr := string(contentBytes)
+	var firstLine, restOfContent string
+	parts := strings.SplitN(contentStr, "\r\n", 2)
+	if len(parts) > 0 {
+		firstLine = parts[0]
+	}
+	if len(parts) > 1 {
+		restOfContent = parts[1]
+	}
+	// Only if the first line has a //objectcomments replace it, else don't touch it.
+	newFirstLine := strings.Replace(firstLine, "//objectcomments ", "$PBExportComments$", 1)
+	// If there was already an export header on the first line, one must not add another one.
+	if !bytes.HasPrefix(contentBytes, []byte("$PBExportHeader$")) {
+		newFirstLine = fmt.Sprintf("$PBExportHeader$%s\r\n", filepath.Base(filePath)) + newFirstLine
+	}
+
+	var finalContentBuilder strings.Builder
+	finalContentBuilder.WriteString(newFirstLine)
+	if len(parts) > 1 {
+		finalContentBuilder.WriteString("\r\n")
+		finalContentBuilder.WriteString(restOfContent)
+	}
+	// do not trim space only but only if it comes with EOF
+	finalContentStr := finalContentBuilder.String()
+	if strings.HasSuffix(finalContentStr, "\x20\x00") {
+		finalContentStr = strings.TrimRight(finalContentStr, "\x20\x00")
+	}
+
+	outputBuffer := new(bytes.Buffer)
+	outputBuffer.Write(utf8BOM)
+	outputBuffer.Write([]byte(finalContentStr))
+	if _, err = tempFile.Write(outputBuffer.Bytes()); err != nil {
+		return fmt.Errorf("failed to write to temp file %s: %v", tempFile.Name(), err)
+	}
+	if err = tempFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp file %s: %v", tempFile.Name(), err)
+	}
+	if err = os.Chmod(tempFile.Name(), originalPerms); err != nil {
+		return fmt.Errorf("failed to set permissions on temp file %s: %v", tempFile.Name(), err)
+	}
+	if err = os.Rename(tempFile.Name(), filePath); err != nil {
+		return fmt.Errorf("failed to rename temp file to original %s: %v", filePath, err)
+	}
+	return err
+}

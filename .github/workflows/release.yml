@@ -45,7 +45,7 @@ jobs:
           github_token: ${{ github.token }} # need write permissions to tag repo
           default_bump: false
           default_prerelease_bump: prerelease
-          pre_release_branches: prerelease
+          pre_release_branches: prerelease,dev_backport
           append_to_pre_release_tag: testrelease
         
       - name: assign runner environment variable SRVBUILDXY_PFX_FILE to PFX_FILE specifing the pfx file on the runner 

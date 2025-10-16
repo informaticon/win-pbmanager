@@ -57,7 +57,58 @@ func CopyFile(src string, dst string) error {
 	return nil
 }
 
-// GetRessource downloads a blob from an url and caches it for further use.
+func CopyWithUtf8Bom(srcPath, dstPath string) error {
+	srcFile, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dstPath)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	bomWriter := transform.NewWriter(dstFile, unicode.UTF8BOM.NewEncoder())
+
+	_, err = io.Copy(bomWriter, srcFile)
+	if err != nil {
+		return err
+	}
+	return bomWriter.Close()
+}
+
+// CopyDirectory recursively copies a directory from a source path to a destination path.
+func CopyDirectory(src, dst string) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return fmt.Errorf("failed to stat source directory: %w", err)
+	}
+	if !srcInfo.IsDir() {
+		return fmt.Errorf("source is not a directory: %s", src)
+	}
+	if err := os.MkdirAll(dst, srcInfo.Mode()); err != nil {
+		return fmt.Errorf("failed to create destination directory: %w", err)
+	}
+	err = filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return fmt.Errorf("failed to get relative path for %s: %w", path, err)
+		}
+		dstPath := filepath.Join(dst, relPath)
+		if info.IsDir() {
+			return os.MkdirAll(dstPath, info.Mode())
+		}
+		return CopyFile(path, dstPath)
+	})
+	return err
+}
+
+// GetRessource downloads a blob from a url and caches it for further use.
 // It's needed to get pbdk, some pbl files and other big binary data.
 func GetRessource(url string) (string, error) {
 	dstFilePath := filepath.Join(os.TempDir(), "pbmigrator", path.Base(url))

@@ -3,19 +3,16 @@
 package backport
 
 import (
-	"errors"
+	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/informaticon/dev.win.base.pbmanager/internal/importer"
-	pborca "github.com/informaticon/lib.go.base.pborca"
-	"github.com/informaticon/lib.go.base.pborca/pbtemplates"
 )
 
 // ConvertProjectToTarget modifies src files referenced by .pbproj directory and converts the project back to target.
-func ConvertProjectToTarget(Orca *pborca.Orca, pbProjFile string) error {
+func ConvertProjectToTarget(pbProjFile string, verbose bool) error {
 	rules := []FileRule{
 		{Matcher: matchExt(".srd"), Handler: handleSrdFile},
 		{Matcher: matchExt(".sra"), Handler: handleSraFile},
@@ -38,54 +35,60 @@ func ConvertProjectToTarget(Orca *pborca.Orca, pbProjFile string) error {
 		return fmt.Errorf("failed to write actual application target %s: %v", pbtFilePath, err)
 	}
 
-	// get list of src dirs and resulting pbl files
-	srcDirs, pblFiles := []string{}, []string{}
-	for i, lib := range pbProj.Libraries.GetPblPaths() {
-		pblFile := filepath.Join(filepath.Dir(pbProjFile), lib)
-		srcDir := pblFile + ".old"
-		err = os.Rename(pblFile, srcDir)
-		if err != nil {
-			return fmt.Errorf("failed to rename %s to %s: %v", pblFile, srcDir, err)
-		}
-		srcDirs = append(srcDirs, srcDir)
-		pblFiles = append(pblFiles, pblFile)
-
-		if strings.Contains(filepath.Clean(lib), filepath.Clean(pbProj.Libraries.AppEntry)) {
-			// Create main pbl file (needed, because Orca only works if application is already compilable)
-			err = createMainPblFromPbProj(Orca, pbProj, filepath.Dir(pbProjFile))
-			if err != nil {
-				return err
-			}
-			continue
-		}
-		err = os.MkdirAll(filepath.Dir(pblFiles[i]), 0o644)
-		if err != nil {
-			return err
-		}
-		if _, err := os.Stat(pblFiles[i]); errors.Is(err, os.ErrNotExist) {
-			errWrite := os.WriteFile(pblFiles[i], pbtemplates.GetEmptyPbl(), 0o644)
-			if errWrite != nil {
-				return fmt.Errorf("failed to write empty PBL %s: %v", pblFiles[i], errWrite)
-			}
-		}
-	}
-
-	// have all ingredients, can start to import actual source
-	err = importer.Import(Orca, pbtFilePath, srcDirs, pblFiles)
+	err = Src25ToWsObjects(pbProj, verbose)
 	if err != nil {
-		return fmt.Errorf("failed to multi-import into PBLs at %s: %v", filepath.Dir(pbProjFile), err)
+		return err
 	}
-	return nil
+
+	jsonTemplate := []byte(fmt.Sprintf(`{
+    "MetaInfo": {
+        "IDEVersion": "220",
+        "RuntimeVersion": "22.2.0.3356"
+    },
+    "BuildPlan": {
+        "SourceControl": {
+            "Merging": [
+                {"Target": ".\\%[1]s.pbt", "LocalProjectPath": ".", "RefreshPbl": true}
+            ]
+        },
+        "BuildJob": {
+            "Projects": [
+                {"Target": ".\\%[1]s.pbt","Name": "%[1]s"}
+            ]
+        }
+    }
+}`, strings.TrimSuffix(filepath.Base(pbProjFile), ".pbproj")))
+
+	autoBuildJsonFile := filepath.Join(filepath.Dir(pbProjFile),
+		strings.TrimSuffix(filepath.Base(pbProjFile), ".pbproj")+".json")
+	err = os.WriteFile(autoBuildJsonFile, jsonTemplate, 0o644)
+	if err != nil {
+		return err
+	}
+	return runPbAutoBuild(strings.TrimSuffix(filepath.Base(pbProjFile), ".pbproj"), verbose)
 }
 
-func createMainPblFromPbProj(Orca *pborca.Orca, pbProj *PbProject, workDir string) error {
-	pblSrc, err := Orca.CreateApplicationPbl(pbProj.Application.Name, pbtemplates.GenerateSra(pbProj.Application.Name))
-	if err != nil {
-		return fmt.Errorf("failed to obtain minimal application PBL: %v", err)
+// runPbAutoBuild executes the pbautobuild command with ./a3.json!!!
+// Must be exactly like this, no absolute path no, no "a3.json" -_-
+func runPbAutoBuild(jsonName string, verbose bool) error {
+	cmd := exec.Command("pbautobuild220.exe", "/f", fmt.Sprintf(".\\%s.json", jsonName))
+	fmt.Printf("running command: %s\n", cmd.String())
+	if verbose {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
 	}
-	err = os.WriteFile(filepath.Join(workDir, pbProj.Libraries.AppEntry), pblSrc, 0o644)
+	var stdoutBuf, stderrBuf bytes.Buffer
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("failed to obtain minimal application PBL: %v", err)
+		return fmt.Errorf("command '%s' failed: %w\n  stdout: %s\n  stderr: %s",
+			cmd.String(),
+			err,
+			strings.TrimSpace(stdoutBuf.String()),
+			strings.TrimSpace(stderrBuf.String()),
+		)
 	}
 	return nil
 }

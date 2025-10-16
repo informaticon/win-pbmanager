@@ -23,7 +23,16 @@ func NewTarget(appName, appEntryPbl string, libList []string) Target {
 	}
 }
 
+// ToBytes must cut off the library list paths and can only consider the file name, e.g. not test\\exf1.pbl but only
+// exf1.pbl.
+// This is needed since else the backporting is not working properly as pbautobuild220.exe expects a flat pbl structure
+// within ws_objects and beside the target. Else an error "application not set" occurs.
 func (t Target) ToBytes() []byte {
+	for i, lib := range t.LibList {
+		t.LibList[i] = filepath.Base(lib)
+	}
+	t.AppLib = filepath.Base(t.AppLib)
+
 	targetString := fmt.Sprintf(`Save Format v3.0(19990112)
 appname "%s";
 applib "%s";

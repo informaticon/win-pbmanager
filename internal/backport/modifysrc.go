@@ -3,17 +3,22 @@ package backport
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 )
 
 // FileRule is a combination of a Matcher for filenames, its extensions, combinations of it etc. and a Handler modifying
 // those matchers.
 type FileRule struct {
-	Matcher func(filename string) bool
-	Handler func(filename string, content []byte) ([]byte, error)
+	description string
+	Matcher     func(filename string) bool
+	Handler     func(filename string, content []byte) ([]byte, error)
 }
 
 // ConvertSrcDirs modifies all files according to rules within the listed root dirs.
@@ -35,6 +40,9 @@ func convertSrcDir(root string, rules []FileRule) error {
 		}
 		for _, rule := range rules {
 			err = applyRule(rule, path, info)
+			if err != nil {
+				return fmt.Errorf("rule %s could not be applied for fie %s", rule.description, path)
+			}
 		}
 		return nil
 	})
@@ -43,7 +51,14 @@ func convertSrcDir(root string, rules []FileRule) error {
 // applyRule modifies files matching the rule according to the given handler.
 func applyRule(rule FileRule, path string, info os.FileInfo) error {
 	if rule.Matcher(path) {
-		content, err := os.ReadFile(path)
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		reader := transform.NewReader(file, unicode.BOMOverride(unicode.UTF8.NewDecoder()))
+		content, err := io.ReadAll(reader)
+		// content, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}

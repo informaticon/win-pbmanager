@@ -14,8 +14,8 @@ import (
 // ConvertProjectToTarget modifies src files referenced by .pbproj directory and converts the project back to target.
 func ConvertProjectToTarget(pbProjFile string, verbose bool) error {
 	rules := []FileRule{
-		{Matcher: matchExt(".srd"), Handler: handleSrdFile},
-		{Matcher: matchExt(".sra"), Handler: handleSraFile},
+		{description: "FixDWHeader", Matcher: matchExt(".srd"), Handler: handleSrdFile},
+		{description: "FixSraRuntime", Matcher: matchExt(".sra"), Handler: handleSraFile},
 	}
 	err := ConvertSrcDirs([]string{filepath.Dir(pbProjFile)}, rules)
 	if err != nil {
@@ -53,11 +53,11 @@ func ConvertProjectToTarget(pbProjFile string, verbose bool) error {
         },
         "BuildJob": {
             "Projects": [
-                {"Target": ".\\%[1]s.pbt","Name": "%[1]s"}
+                {"Target": ".\\%[1]s.pbt","Name": "%[2]s"}
             ]
         }
     }
-}`, strings.TrimSuffix(filepath.Base(pbProjFile), ".pbproj")))
+}`, strings.TrimSuffix(filepath.Base(pbProjFile), ".pbproj"), pbProj.Application))
 
 	autoBuildJsonFile := filepath.Join(filepath.Dir(pbProjFile),
 		strings.TrimSuffix(filepath.Base(pbProjFile), ".pbproj")+".json")

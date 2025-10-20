@@ -65,6 +65,12 @@ func FixSqla17Base(libFolder string, targetName string, orca *pborca.Orca, warnF
 		replace string
 	}{
 		{
+			"FIX0.1", "inf1.pbl", "inf1_u_transaction",
+			regexp.MustCompile(`(?is)public[ \t]+function[ \t]+string[ \t]+of_get_version[ \t]*\(\)`),
+			regexp.MustCompile(`(?is)(end[ \t]+prototypes[\r\n\t ]+)(public|protected|private|event)`),
+			"public function string of_get_version ()\r\n${1}public function string of_get_version ();SQLA17 migration - FIX0.1: Add of_get_version for FIX2\r\n\treturn profilestring(is_inifile, is_datasource, 'version', '')\r\nend function\r\n\r\n${2}",
+		},
+		{
 			"FIX1", "inf1.pbl", "inf1_u_transaction",
 			regexp.MustCompile(`(?is)//SQLA17 migration - FIX1:`),
 			regexp.MustCompile(`(?is)[\r\n]+(\/\/Version[\n\r\t ]+ls_version[\t =]+of_get_version\(\).*?end if)`),

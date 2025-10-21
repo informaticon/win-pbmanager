@@ -68,7 +68,7 @@ func FixSqla17Base(libFolder string, targetName string, orca *pborca.Orca, warnF
 			"FIX0.1", "inf1.pbl", "inf1_u_transaction",
 			regexp.MustCompile(`(?is)public[ \t]+function[ \t]+string[ \t]+of_get_version[ \t]*\(\)`),
 			regexp.MustCompile(`(?is)(end[ \t]+prototypes[\r\n\t ]+)(public|protected|private|event)`),
-			"public function string of_get_version ()\r\n${1}public function string of_get_version ();SQLA17 migration - FIX0.1: Add of_get_version for FIX2\r\n\treturn profilestring(is_inifile, is_datasource, 'version', '')\r\nend function\r\n\r\n${2}",
+			"public function string of_get_version ()\r\n${1}public function string of_get_version ();//SQLA17 migration - FIX0.1: Add of_get_version for FIX2\r\n\treturn profilestring(is_inifile, is_datasource, 'version', '')\r\nend function\r\n\r\n${2}",
 		},
 		{
 			"FIX1", "inf1.pbl", "inf1_u_transaction",
@@ -116,8 +116,8 @@ func FixSqla17Base(libFolder string, targetName string, orca *pborca.Orca, warnF
 		if err != nil {
 			return fmt.Errorf("fix %s for %s failed, could not write source: %v", fix.fixName, fix.objName, err)
 		}
-
 	}
+
 	fmt.Printf("FixSqla17Base applied all necessary fixes\n")
 	return nil
 }

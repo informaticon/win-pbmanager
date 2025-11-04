@@ -57,7 +57,7 @@ func ConvertProjectToTarget(pbProjFile string, verbose bool) error {
             ]
         }
     }
-}`, strings.TrimSuffix(filepath.Base(pbProjFile), ".pbproj"), pbProj.Application))
+}`, strings.TrimSuffix(filepath.Base(pbProjFile), ".pbproj"), pbProj.Application.Name))
 
 	autoBuildJsonFile := filepath.Join(filepath.Dir(pbProjFile),
 		strings.TrimSuffix(filepath.Base(pbProjFile), ".pbproj")+".json")

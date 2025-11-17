@@ -25,6 +25,32 @@ var Version = "0.0.0-trunk"
 var rootCmd = &cobra.Command{
 	Use:   "pbmanager",
 	Short: "PowerBuilder management tools",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		var logMinSeverity slog.Level
+		switch flagLogLevel {
+		case "debug":
+			logMinSeverity = slog.LevelDebug
+		case "info":
+			logMinSeverity = slog.LevelInfo
+		case "warn":
+			logMinSeverity = slog.LevelWarn
+		case "error":
+			logMinSeverity = slog.LevelError
+		default:
+			fmt.Printf("invalid log level: %s\n", flagLogLevel)
+			os.Exit(2)
+		}
+
+		slog.SetDefault(slog.New(logging.New(nil,
+			rule.New().
+				Transform(pretty.New()).
+				Filter(level.New(level.WithMin(logMinSeverity))).
+				Send(std.New()),
+			rule.New().
+				Filter(level.New(level.WithMin(logMinSeverity))).
+				Send(eventlog.New("dev.win.base.pbmanager", eventlog.WithExternal())),
+		)))
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flagV, err := cmd.Flags().GetBool("version")
 		if err != nil {
@@ -41,30 +67,6 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	var logMinSeverity slog.Level
-	switch flagLogLevel {
-	case "debug":
-		logMinSeverity = slog.LevelDebug
-	case "info":
-		logMinSeverity = slog.LevelInfo
-	case "warn":
-		logMinSeverity = slog.LevelWarn
-	case "error":
-		logMinSeverity = slog.LevelError
-	default:
-		fmt.Printf("invalid log level: %s\n", flagLogLevel)
-		os.Exit(2)
-	}
-
-	slog.SetDefault(slog.New(logging.New(nil,
-		rule.New().
-			Transform(pretty.New()).
-			Filter(level.New(level.WithMin(logMinSeverity))).
-			Send(std.New()),
-		rule.New().
-			Filter(level.New(level.WithMin(logMinSeverity))).
-			Send(eventlog.New("dev.win.base.pbmanager", eventlog.WithExternal())),
-	)))
 	err := rootCmd.Execute()
 	if err != nil {
 		fmt.Println(err)

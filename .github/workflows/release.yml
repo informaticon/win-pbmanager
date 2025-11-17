@@ -52,7 +52,7 @@ jobs:
         run: echo "PFX_FILE=$env:SRVBUILDXY_PFX_FILE" >> $env:GITHUB_ENV
 
       - name: Choco release
-        uses: informaticon/dev.github.base.go-choco-release@v2
+        uses: informaticon/dev.github.base.go-choco-release@v3
         with:
           build_cmd: |
             $Env:GOOS = "windows"; $Env:GOARCH = "amd64"; go build -o ./choco/tools/pbmanager.exe -ldflags "-X 'github.com/informaticon/dev.win.base.pbmanager/cmd.Version=${{ steps.tag_version.outputs.new_version }}' -X 'github.com/informaticon/dev.win.base.pbmanager/cmd.BuildTime=$(Get-Date -Format "yyyy-MM-ddTHH:mm:sszzz")'"
@@ -63,8 +63,8 @@ jobs:
           release_asset_files: |
             ./choco/pbmanager.exe
           choco_api_key: ${{ secrets.GITHUB_TOKEN }}
-          codesigning_pfx: ${{ env.PFX_FILE }}
-          codesigning_pfx_passphrase: ${{ secrets.SRVBUILDXY_PRIVATE_KEY_PASSPHRASE }}
+          codesign_cid: ${{ secrets.PROD_CODESIGN_CLIENT_ID }}
+          codesign_cs: ${{ secrets.PROD_CODESIGN_CLIENT_SECRET }}
           choco_registry: ${{ vars.CHOCO_REGISTRY }}
           new_version: '${{ steps.tag_version.outputs.new_version }}'
           release_type: '${{ steps.tag_version.outputs.release_type }}'

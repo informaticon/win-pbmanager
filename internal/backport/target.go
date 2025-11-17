@@ -17,7 +17,7 @@ type Target struct {
 }
 
 // NewTarget returns the minimal structure of needed for a target file. Expects a list of pbl names, e.g.
-// []string{"some_app.pbl", "some_lib.pbl", ...}
+// []string{"some_app.pbl", "some_lib.pbl", ...}.
 func NewTarget(appName, appEntryPbl string, libList []string) *Target {
 	// Defines the 10 hardcoded lists (with base names)
 	list1 := []string{"lif"}

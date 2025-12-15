@@ -27,9 +27,9 @@ func NewTarget(appName, appEntryPbl string, libList []string) *Target {
 	list5 := []string{"sfi"}
 	list6 := []string{"bai", "kim"}
 	list7 := []string{"cfg_lohn", "elm", "elmg", "elmp", "elx", "loh", "lor", "spe", "stm_lohn"}
-	list8 := []string{"anl", "deb", "fib", "fin", "kor", "kre", "mai", "mve", "tbs", "zea", "zei", "zek", "zes"}
+	list8 := []string{"anl", "deb", "fib", "fin", "fre", "kor", "kre", "mai", "mve", "tbs", "zea", "zei", "zek", "zes"}
 	list9 := []string{
-		"adr", "arc", "art", "bde", "biz", "dgm", "dis", "drucken", "dzb", "ecp", "ein", "fre", "ger",
+		"adr", "arc", "art", "bde", "biz", "dgm", "dis", "drucken", "dzb", "ecp", "ein", "ger",
 		"kon", "lag", "lda", "map", "mit", "obj", "ord", "pos", "prj", "rap", "res", "sal",
 	}
 	list10 := []string{

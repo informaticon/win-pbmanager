@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -34,14 +35,24 @@ func ConvertSrcDirs(sourceDirs []string, rules []FileRule) error {
 
 // convertSrcDir modifies all files according to rules within root.
 func convertSrcDir(root string, rules []FileRule) error {
-	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	// root might be a junction/symlink to a shorter path because pbautobuild is retarded and crashes on paths
+	// with length around 180 chars.
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return err
+	}
+	if !strings.EqualFold(resolvedRoot, root) {
+		slog.Info(fmt.Sprintf("resolved root directory %s to %s", root, resolvedRoot))
+	}
+
+	return filepath.Walk(resolvedRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return err
 		}
 		for _, rule := range rules {
 			err = applyRule(rule, path, info)
 			if err != nil {
-				return fmt.Errorf("rule %s could not be applied for fie %s", rule.description, path)
+				return fmt.Errorf("rule %s could not be applied for file %s", rule.description, path)
 			}
 		}
 		return nil
@@ -79,7 +90,7 @@ func applyRule(rule FileRule, path string, info os.FileInfo) error {
 var regexReplaceRelease = regexp.MustCompile(`^(release.*)(\r?\n)?`)
 
 // handleSrdFile ensures that the first line within each srd file contains "release 22;".
-func handleSrdFile(filename string, content []byte) ([]byte, error) { // TODO only 25 -> 22 oar all lower also, e.g. 17?
+func handleSrdFile(filename string, content []byte) ([]byte, error) { // TODO only 25 -> 22 or all lower also, e.g. 17?
 	if bytes.Contains(content, []byte("release 25;")) {
 		fmt.Printf("Modify currently set release within %s to 22\n", filename)
 		content = regexReplaceRelease.ReplaceAll(content, []byte("release 22;"+"$2"))

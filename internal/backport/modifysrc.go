@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log/slog"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -37,20 +37,60 @@ func ConvertSrcDirs(sourceDirs []string, rules []FileRule) error {
 func convertSrcDir(root string, rules []FileRule) error {
 	// root might be a junction/symlink to a shorter path because pbautobuild is retarded and crashes on paths
 	// with length around 180 chars.
-	resolvedRoot, err := filepath.EvalSymlinks(root)
+	// Since walkDir checks for !d.IsDir() which is true on a junction the manual ReadDir is needed to access the
+	// junction its content.
+	entries, err := os.ReadDir(root)
 	if err != nil {
 		return err
 	}
-	if !strings.EqualFold(resolvedRoot, root) {
-		slog.Info(fmt.Sprintf("resolved root directory %s to %s", root, resolvedRoot))
+
+	for _, entry := range entries {
+		fullPath := filepath.Join(root, entry.Name())
+		if entry.IsDir() {
+			err = convertSrcSubDir(fullPath, rules)
+			if err != nil {
+				return err
+			}
+		} else {
+			var fi fs.FileInfo
+			fi, err = entry.Info()
+			if err != nil {
+				return err
+			}
+			err = convertSrcFile(fullPath, fi, rules)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
-	return filepath.Walk(resolvedRoot, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
+	return nil
+}
+
+// convertSrcFile applies the src conversion rules to a direct sub-root file.
+func convertSrcFile(fullPath string, fi fs.FileInfo, rules []FileRule) error {
+	for _, rule := range rules {
+		err := applyRule(rule, fullPath, fi)
+		if err != nil {
+			return fmt.Errorf("rule %s could not be applied for file %s", rule.description, fullPath)
+		}
+	}
+	return nil
+}
+
+// convertSrcSubDir applies the src conversion rules to a sub-root directory
+func convertSrcSubDir(fullPath string, rules []FileRule) error {
+	return filepath.WalkDir(fullPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
 			return err
 		}
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+
 		for _, rule := range rules {
-			err = applyRule(rule, path, info)
+			err = applyRule(rule, path, fi)
 			if err != nil {
 				return fmt.Errorf("rule %s could not be applied for file %s", rule.description, path)
 			}

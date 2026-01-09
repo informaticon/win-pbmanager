@@ -127,13 +127,13 @@ func applyRule(rule FileRule, path string, info os.FileInfo) error {
 }
 
 // Regex to match the first line (handles both \n and \r\n)
-var regexReplaceRelease = regexp.MustCompile(`^(release.*)(\r?\n)?`)
+var regexReplaceRelease = regexp.MustCompile(`(?m)^(//objectcomments.*\r?\n)?(release.*)(\r?\n)?`)
 
 // handleSrdFile ensures that the first line within each srd file contains "release 22;".
 func handleSrdFile(filename string, content []byte) ([]byte, error) { // TODO only 25 -> 22 or all lower also, e.g. 17?
 	if bytes.Contains(content, []byte("release 25;")) {
 		fmt.Printf("Modify currently set release within %s to 22\n", filename)
-		content = regexReplaceRelease.ReplaceAll(content, []byte("release 22;"+"$2"))
+		content = regexReplaceRelease.ReplaceAll(content, []byte("${1}release 22;${3}"))
 	}
 	return content, nil
 }
